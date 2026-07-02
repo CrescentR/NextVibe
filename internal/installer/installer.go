@@ -27,6 +27,21 @@ type Result struct {
 	Message         string       `json:"message"`
 }
 
+type VerificationCheck struct {
+	Name    string `json:"name"`
+	Path    string `json:"path"`
+	Passed  bool   `json:"passed"`
+	Details string `json:"details,omitempty"`
+}
+
+type VerificationResult struct {
+	ProtocolVersion string              `json:"protocolVersion"`
+	Target          string              `json:"target"`
+	Passed          bool                `json:"passed"`
+	Checks          []VerificationCheck `json:"checks"`
+	Message         string              `json:"message"`
+}
+
 func Install(root, target string) (Result, error) {
 	target = strings.ToLower(strings.TrimSpace(target))
 	switch target {
@@ -41,6 +56,48 @@ func Install(root, target string) (Result, error) {
 	default:
 		return Result{}, fmt.Errorf("unknown install target %q; expected codex, claude, cursor, or all", target)
 	}
+}
+
+func Verify(root, target string) (VerificationResult, error) {
+	target = strings.ToLower(strings.TrimSpace(target))
+	if target == "" {
+		target = "all"
+	}
+
+	result := VerificationResult{
+		ProtocolVersion: protocol.Version,
+		Target:          target,
+		Passed:          true,
+		Checks:          []VerificationCheck{},
+	}
+
+	switch target {
+	case "codex":
+		result.Checks = append(result.Checks, verifyCodex(root)...)
+	case "claude":
+		result.Checks = append(result.Checks, verifyClaude(root)...)
+	case "cursor":
+		result.Checks = append(result.Checks, verifyCursor(root)...)
+	case "all":
+		result.Checks = append(result.Checks, verifyCodex(root)...)
+		result.Checks = append(result.Checks, verifyClaude(root)...)
+		result.Checks = append(result.Checks, verifyCursor(root)...)
+	default:
+		return VerificationResult{}, fmt.Errorf("unknown verify target %q; expected codex, claude, cursor, or all", target)
+	}
+
+	for _, check := range result.Checks {
+		if !check.Passed {
+			result.Passed = false
+			break
+		}
+	}
+	if result.Passed {
+		result.Message = brand.ProjectName + " integrations verified."
+	} else {
+		result.Message = brand.ProjectName + " integration verification failed."
+	}
+	return result, nil
 }
 
 func installAll(root string) (Result, error) {
@@ -105,6 +162,114 @@ func installCursor(root string) (Result, error) {
 		Files:           []FileResult{file},
 		Message:         "Cursor integration installed.",
 	}, nil
+}
+
+func verifyCodex(root string) []VerificationCheck {
+	return verifyManagedFile(root, "AGENTS.md", []string{
+		"## " + brand.ProjectName + " Agent Navigation",
+		brand.CommandName + " scan --json",
+		brand.CommandName + " suggest --json",
+		brand.CommandName + " task --json",
+		brand.CommandName + " check --json",
+		"Do not expand the task scope.",
+	})
+}
+
+func verifyClaude(root string) []VerificationCheck {
+	checks := []VerificationCheck{}
+	checks = append(checks, verifyManagedFile(root, "CLAUDE.md", []string{
+		"## " + brand.ProjectName + " Project Navigation",
+		brand.CommandName + " scan --json",
+		brand.CommandName + " suggest --json",
+		brand.CommandName + " task --json",
+		brand.CommandName + " check --json",
+		"Respect the returned task boundaries and acceptance criteria.",
+	})...)
+	checks = append(checks, verifyManagedFile(root, filepath.ToSlash(filepath.Join(".claude", "skills", "nextvibe", "SKILL.md")), []string{
+		"# " + brand.ProjectName + " Project Navigation",
+		"Workflow:",
+		brand.CommandName + " scan --json",
+		brand.CommandName + " suggest --json",
+		brand.CommandName + " task --json",
+		brand.CommandName + " check --json",
+		"Call the local CLI directly and use the JSON result.",
+	})...)
+	checks = append(checks, verifyManagedFile(root, filepath.ToSlash(filepath.Join(".claude", "commands", "nv-suggest.md")), []string{
+		"# nv-suggest",
+		brand.CommandName + " scan --json",
+		brand.CommandName + " suggest --json",
+		brand.CommandName + " task --json",
+		"Use the returned task boundaries before editing.",
+	})...)
+	checks = append(checks, verifyManagedFile(root, filepath.ToSlash(filepath.Join(".claude", "commands", "nv-check.md")), []string{
+		"# nv-check",
+		brand.CommandName + " check --json",
+		"Use the result to decide whether the active task is complete.",
+	})...)
+	return checks
+}
+
+func verifyCursor(root string) []VerificationCheck {
+	return verifyManagedFile(root, filepath.ToSlash(filepath.Join(".cursor", "rules", "nextvibe.mdc")), []string{
+		"---",
+		"description: Use " + brand.ProjectName + " before broad project continuation work",
+		`globs: "**/*"`,
+		"alwaysApply: true",
+		"# " + brand.ProjectName,
+		brand.CommandName + " scan --json",
+		brand.CommandName + " suggest --json",
+		brand.CommandName + " task --json",
+		brand.CommandName + " check --json",
+		"Respect task boundaries and acceptance criteria.",
+	})
+}
+
+func verifyManagedFile(root, rel string, required []string) []VerificationCheck {
+	checks := []VerificationCheck{}
+	content, ok := readVerificationFile(root, rel)
+	checks = append(checks, VerificationCheck{
+		Name:    "file exists",
+		Path:    filepath.ToSlash(rel),
+		Passed:  ok,
+		Details: detailIf(!ok, "file is missing"),
+	})
+	if !ok {
+		return checks
+	}
+
+	hasStart := strings.Contains(content, sectionStart)
+	hasEnd := strings.Contains(content, sectionEnd)
+	checks = append(checks, VerificationCheck{
+		Name:    "managed section markers exist",
+		Path:    filepath.ToSlash(rel),
+		Passed:  hasStart && hasEnd && strings.Index(content, sectionStart) < strings.Index(content, sectionEnd),
+		Details: detailIf(!(hasStart && hasEnd), "managed section markers are missing"),
+	})
+	for _, expected := range required {
+		found := strings.Contains(content, expected)
+		checks = append(checks, VerificationCheck{
+			Name:    "contains " + expected,
+			Path:    filepath.ToSlash(rel),
+			Passed:  found,
+			Details: detailIf(!found, "required content is missing"),
+		})
+	}
+	return checks
+}
+
+func readVerificationFile(root, rel string) (string, bool) {
+	data, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(rel)))
+	if err != nil {
+		return "", false
+	}
+	return string(data), true
+}
+
+func detailIf(condition bool, detail string) string {
+	if condition {
+		return detail
+	}
+	return ""
 }
 
 func upsertSection(root, rel, section string) (FileResult, error) {

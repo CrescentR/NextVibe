@@ -54,6 +54,125 @@ func TestInstallAllJSONSupportsFlagAfterTarget(t *testing.T) {
 	})
 }
 
+func TestInstallVerifyJSONChecksGeneratedIntegrations(t *testing.T) {
+	withTempCWD(t, func(root string) {
+		var installStdout bytes.Buffer
+		var installStderr bytes.Buffer
+		if code := cli.Run([]string{"install", "all", "--json"}, &installStdout, &installStderr); code != 0 {
+			t.Fatalf("install returned %d, stderr: %s", code, installStderr.String())
+		}
+
+		var stdout bytes.Buffer
+		var stderr bytes.Buffer
+		code := cli.Run([]string{"install", "verify", "--json"}, &stdout, &stderr)
+		if code != 0 {
+			t.Fatalf("install verify returned %d, stderr: %s", code, stderr.String())
+		}
+
+		var result struct {
+			ProtocolVersion string `json:"protocolVersion"`
+			Target          string `json:"target"`
+			Passed          bool   `json:"passed"`
+			Checks          []struct {
+				Name   string `json:"name"`
+				Path   string `json:"path"`
+				Passed bool   `json:"passed"`
+			} `json:"checks"`
+		}
+		if err := json.Unmarshal(stdout.Bytes(), &result); err != nil {
+			t.Fatalf("verify output is not valid JSON: %v\n%s", err, stdout.String())
+		}
+		if result.ProtocolVersion != protocol.Version {
+			t.Fatalf("protocol version = %q, want %q", result.ProtocolVersion, protocol.Version)
+		}
+		if result.Target != "all" || !result.Passed {
+			t.Fatalf("verify result = %#v", result)
+		}
+		for _, want := range []struct {
+			path string
+			name string
+		}{
+			{"AGENTS.md", "contains nextvibe task --json"},
+			{filepath.ToSlash(filepath.Join(".claude", "skills", "nextvibe", "SKILL.md")), "contains Workflow:"},
+			{filepath.ToSlash(filepath.Join(".claude", "commands", "nv-check.md")), "contains nextvibe check --json"},
+			{filepath.ToSlash(filepath.Join(".cursor", "rules", "nextvibe.mdc")), "contains alwaysApply: true"},
+		} {
+			if !hasVerificationCheck(result.Checks, want.path, want.name, true) {
+				t.Fatalf("verify checks missing %s %s: %#v", want.path, want.name, result.Checks)
+			}
+		}
+	})
+}
+
+func TestInstallVerifyJSONFailsWhenGeneratedCommandIsBroken(t *testing.T) {
+	withTempCWD(t, func(root string) {
+		var installStdout bytes.Buffer
+		var installStderr bytes.Buffer
+		if code := cli.Run([]string{"install", "all", "--json"}, &installStdout, &installStderr); code != 0 {
+			t.Fatalf("install returned %d, stderr: %s", code, installStderr.String())
+		}
+
+		brokenCommand := filepath.Join(".claude", "commands", "nv-check.md")
+		writeFile(t, root, brokenCommand, "<!-- NEXTVIBE:START -->\n# nv-check\n<!-- NEXTVIBE:END -->\n")
+
+		var stdout bytes.Buffer
+		var stderr bytes.Buffer
+		code := cli.Run([]string{"install", "verify", "claude", "--json"}, &stdout, &stderr)
+		if code == 0 {
+			t.Fatalf("install verify returned success, stdout: %s", stdout.String())
+		}
+
+		var result struct {
+			Target string `json:"target"`
+			Passed bool   `json:"passed"`
+			Checks []struct {
+				Name   string `json:"name"`
+				Path   string `json:"path"`
+				Passed bool   `json:"passed"`
+			} `json:"checks"`
+		}
+		if err := json.Unmarshal(stdout.Bytes(), &result); err != nil {
+			t.Fatalf("verify output is not valid JSON: %v\n%s", err, stdout.String())
+		}
+		if result.Target != "claude" || result.Passed {
+			t.Fatalf("verify result = %#v", result)
+		}
+		if !hasVerificationCheck(result.Checks, filepath.ToSlash(brokenCommand), "contains nextvibe check --json", false) {
+			t.Fatalf("verify did not report missing claude check command: %#v", result.Checks)
+		}
+	})
+}
+
+func TestInstallVerifyJSONFailsBeforeInstall(t *testing.T) {
+	withTempCWD(t, func(root string) {
+		var stdout bytes.Buffer
+		var stderr bytes.Buffer
+		code := cli.Run([]string{"install", "verify", "cursor", "--json"}, &stdout, &stderr)
+		if code == 0 {
+			t.Fatalf("install verify returned success, stdout: %s", stdout.String())
+		}
+
+		var result struct {
+			Target string `json:"target"`
+			Passed bool   `json:"passed"`
+			Checks []struct {
+				Name   string `json:"name"`
+				Path   string `json:"path"`
+				Passed bool   `json:"passed"`
+			} `json:"checks"`
+		}
+		if err := json.Unmarshal(stdout.Bytes(), &result); err != nil {
+			t.Fatalf("verify output is not valid JSON: %v\n%s", err, stdout.String())
+		}
+		if result.Target != "cursor" || result.Passed {
+			t.Fatalf("verify result = %#v", result)
+		}
+		if !hasVerificationCheck(result.Checks, filepath.ToSlash(filepath.Join(".cursor", "rules", "nextvibe.mdc")), "file exists", false) {
+			t.Fatalf("verify did not report missing cursor rule: %#v", result.Checks)
+		}
+	})
+}
+
 func TestTaskJSONCreatesAPIContractTaskForFrontendPrototype(t *testing.T) {
 	withTempCWD(t, func(root string) {
 		writeFile(t, root, "README.md", "# Example\n")
@@ -735,6 +854,19 @@ func readStateFile(t *testing.T, root string) stateFile {
 func contains(values []string, needle string) bool {
 	for _, value := range values {
 		if value == needle {
+			return true
+		}
+	}
+	return false
+}
+
+func hasVerificationCheck(checks []struct {
+	Name   string `json:"name"`
+	Path   string `json:"path"`
+	Passed bool   `json:"passed"`
+}, path, name string, passed bool) bool {
+	for _, check := range checks {
+		if check.Path == path && check.Name == name && check.Passed == passed {
 			return true
 		}
 	}

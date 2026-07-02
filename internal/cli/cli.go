@@ -234,6 +234,10 @@ func runCheck(root string, args []string, stdout, stderr io.Writer) int {
 }
 
 func runInstall(root string, args []string, stdout, stderr io.Writer) int {
+	if len(args) > 0 && args[0] == "verify" {
+		return runInstallVerify(root, args[1:], stdout, stderr)
+	}
+
 	options, target, err := parseInstallArgs(args)
 	if err != nil {
 		return fail(stderr, err)
@@ -249,6 +253,29 @@ func runInstall(root string, args []string, stdout, stderr io.Writer) int {
 		return writeJSON(stdout, stderr, result)
 	}
 	writeInstall(stdout, result, options.lang)
+	return 0
+}
+
+func runInstallVerify(root string, args []string, stdout, stderr io.Writer) int {
+	options, target, err := parseInstallVerifyArgs(args)
+	if err != nil {
+		return fail(stderr, err)
+	}
+	result, err := installer.Verify(root, target)
+	if err != nil {
+		return fail(stderr, err)
+	}
+	if options.jsonOut {
+		code := writeJSON(stdout, stderr, result)
+		if code != 0 || result.Passed {
+			return code
+		}
+		return 1
+	}
+	writeInstallVerification(stdout, result, options.lang)
+	if !result.Passed {
+		return 1
+	}
 	return 0
 }
 
@@ -282,6 +309,48 @@ func parseInstallArgs(args []string) (commandOptions, string, error) {
 			target = arg
 		default:
 			return commandOptions{}, "", fmt.Errorf("install accepts one target, got %q and %q", target, arg)
+		}
+	}
+	lang, err := selectLanguage(langValue, languageValue)
+	if err != nil {
+		return commandOptions{}, "", err
+	}
+	options.lang = lang
+	return options, target, nil
+}
+
+func parseInstallVerifyArgs(args []string) (commandOptions, string, error) {
+	options := commandOptions{lang: languageEnglish}
+	target := "all"
+	seenTarget := false
+	langValue := ""
+	languageValue := ""
+	for i := 0; i < len(args); i++ {
+		arg := args[i]
+		switch {
+		case arg == "--json":
+			options.jsonOut = true
+		case arg == "--lang" || arg == "--language":
+			if i+1 >= len(args) {
+				return commandOptions{}, "", fmt.Errorf("%s requires a value", arg)
+			}
+			i++
+			if arg == "--lang" {
+				langValue = args[i]
+			} else {
+				languageValue = args[i]
+			}
+		case strings.HasPrefix(arg, "--lang="):
+			langValue = strings.TrimPrefix(arg, "--lang=")
+		case strings.HasPrefix(arg, "--language="):
+			languageValue = strings.TrimPrefix(arg, "--language=")
+		case strings.HasPrefix(arg, "-"):
+			return commandOptions{}, "", fmt.Errorf("unknown install verify flag %q", arg)
+		case !seenTarget:
+			target = arg
+			seenTarget = true
+		default:
+			return commandOptions{}, "", fmt.Errorf("install verify accepts one target, got %q and %q", target, arg)
 		}
 	}
 	lang, err := selectLanguage(langValue, languageValue)
@@ -387,11 +456,12 @@ func writeUsage(w io.Writer, lang language) {
   %s task [complete|history] [--json] [--lang en|zh]
   %s check [--json] [--lang en|zh]
   %s install <codex|claude|cursor|all> [--json] [--lang en|zh]
+  %s install verify [codex|claude|cursor|all] [--json] [--lang en|zh]
 
 选项:
   --lang, --language  选择文本输出语言：en 或 zh。JSON 输出保持稳定结构。
 
-`, brand.ProjectName, brand.CommandName, brand.CommandName, brand.CommandName, brand.CommandName, brand.CommandName, brand.CommandName)
+`, brand.ProjectName, brand.CommandName, brand.CommandName, brand.CommandName, brand.CommandName, brand.CommandName, brand.CommandName, brand.CommandName)
 		return
 	}
 	fmt.Fprintf(w, `%s
@@ -405,11 +475,12 @@ Usage:
   %s task [complete|history] [--json] [--lang en|zh]
   %s check [--json] [--lang en|zh]
   %s install <codex|claude|cursor|all> [--json] [--lang en|zh]
+  %s install verify [codex|claude|cursor|all] [--json] [--lang en|zh]
 
 Options:
   --lang, --language  Choose text output language: en or zh. JSON output keeps its stable structure.
 
-`, brand.ProjectName, brand.CommandName, brand.CommandName, brand.CommandName, brand.CommandName, brand.CommandName, brand.CommandName)
+`, brand.ProjectName, brand.CommandName, brand.CommandName, brand.CommandName, brand.CommandName, brand.CommandName, brand.CommandName, brand.CommandName)
 }
 
 func writeInit(w io.Writer, result workspace.InitResult, lang language) {
@@ -485,6 +556,21 @@ func writeInstall(w io.Writer, result installer.Result, lang language) {
 	fmt.Fprintln(w, result.Message)
 	for _, file := range result.Files {
 		fmt.Fprintf(w, "- %s %s\n", label(lang, file.Action), file.Path)
+	}
+}
+
+func writeInstallVerification(w io.Writer, result installer.VerificationResult, lang language) {
+	fmt.Fprintln(w, result.Message)
+	for _, check := range result.Checks {
+		marker := "FAIL"
+		if check.Passed {
+			marker = "PASS"
+		}
+		if check.Details != "" {
+			fmt.Fprintf(w, "- %s %s %s: %s\n", marker, check.Path, check.Name, check.Details)
+			continue
+		}
+		fmt.Fprintf(w, "- %s %s %s\n", marker, check.Path, check.Name)
 	}
 }
 
