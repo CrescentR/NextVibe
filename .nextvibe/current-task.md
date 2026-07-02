@@ -1,9 +1,9 @@
 # Current Task
 
-Task ID: 003
-Status: active
-Title: Record development progress and workflow
-Task file: .nextvibe/tasks/003-record-development-progress-and-workflow.md
+Task ID: 004
+Status: complete
+Title: Add a Chinese README document
+Task file: .nextvibe/tasks/004-add-chinese-readme-document.md
 
 Run:
 

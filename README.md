@@ -1,5 +1,7 @@
 # NextVibe
 
+[中文](README.zh-CN.md)
+
 NextVibe is an agent-native project navigation tool for AI-assisted developers.
 
 It does not replace Codex, Claude Code, or Cursor. It gives them a reliable local command they can call to understand project state, choose a bounded next task, and verify whether that task is complete.
