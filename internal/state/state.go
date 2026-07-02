@@ -19,6 +19,7 @@ type Snapshot struct {
 	Scan            *detector.Result    `json:"scan,omitempty"`
 	Suggestion      *planner.Suggestion `json:"suggestion,omitempty"`
 	CurrentTask     *taskgen.Task       `json:"currentTask,omitempty"`
+	TaskHistory     *taskgen.History    `json:"taskHistory,omitempty"`
 	Check           *checker.Result     `json:"check,omitempty"`
 }
 
@@ -38,6 +39,12 @@ func SaveSuggestion(root string, suggestion planner.Suggestion) error {
 func SaveTask(root string, task taskgen.Task) error {
 	return update(root, func(snapshot *Snapshot) {
 		snapshot.CurrentTask = &task
+	})
+}
+
+func SaveHistory(root string, history taskgen.History) error {
+	return update(root, func(snapshot *Snapshot) {
+		snapshot.TaskHistory = &history
 	})
 }
 

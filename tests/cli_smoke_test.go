@@ -475,6 +475,88 @@ func TestTaskJSONReusesActiveCurrentTask(t *testing.T) {
 	})
 }
 
+func TestTaskCompleteFailsWhenChecksDoNotPass(t *testing.T) {
+	withTempCWD(t, func(root string) {
+		writeCurrentTaskFixture(t, root, "001", "active", "Blocked task")
+
+		var stdout bytes.Buffer
+		var stderr bytes.Buffer
+
+		code := cli.Run([]string{"task", "complete", "--json"}, &stdout, &stderr)
+		if code == 0 {
+			t.Fatalf("task complete returned success, stdout: %s", stdout.String())
+		}
+		if !strings.Contains(stderr.String(), "current task checks did not pass") {
+			t.Fatalf("stderr missing failed check reason:\n%s", stderr.String())
+		}
+		if _, err := os.Stat(filepath.Join(root, ".nextvibe", "task-history.json")); !os.IsNotExist(err) {
+			t.Fatalf("task-history.json should not exist after failed completion")
+		}
+	})
+}
+
+func TestTaskCompleteMarksTaskAndWritesHistory(t *testing.T) {
+	withTempCWD(t, func(root string) {
+		writeFile(t, root, "README.md", "# Example\n")
+		taskFile := writeCurrentTaskFixture(t, root, "001", "active", "Finish me")
+
+		var stdout bytes.Buffer
+		var stderr bytes.Buffer
+
+		code := cli.Run([]string{"task", "complete", "--json"}, &stdout, &stderr)
+		if code != 0 {
+			t.Fatalf("task complete returned %d, stderr: %s", code, stderr.String())
+		}
+
+		var task struct {
+			ProtocolVersion string `json:"protocolVersion"`
+			TaskID          string `json:"taskId"`
+			Status          string `json:"status"`
+		}
+		if err := json.Unmarshal(stdout.Bytes(), &task); err != nil {
+			t.Fatalf("task complete output is not valid JSON: %v\n%s", err, stdout.String())
+		}
+		if task.ProtocolVersion != protocol.Version {
+			t.Fatalf("protocol version = %q, want %q", task.ProtocolVersion, protocol.Version)
+		}
+		if task.TaskID != "001" || task.Status != "complete" {
+			t.Fatalf("completed task = %#v", task)
+		}
+
+		assertFileContains(t, root, filepath.Join(".nextvibe", "current-task.md"), "Status: complete")
+		assertFileContains(t, root, filepath.FromSlash(taskFile), "Status: complete")
+
+		var historyStdout bytes.Buffer
+		var historyStderr bytes.Buffer
+		code = cli.Run([]string{"task", "history", "--json"}, &historyStdout, &historyStderr)
+		if code != 0 {
+			t.Fatalf("task history returned %d, stderr: %s", code, historyStderr.String())
+		}
+
+		var history struct {
+			ProtocolVersion string `json:"protocolVersion"`
+			Tasks           []struct {
+				TaskID string `json:"taskId"`
+				Status string `json:"status"`
+			} `json:"tasks"`
+		}
+		if err := json.Unmarshal(historyStdout.Bytes(), &history); err != nil {
+			t.Fatalf("task history output is not valid JSON: %v\n%s", err, historyStdout.String())
+		}
+		if history.ProtocolVersion != protocol.Version {
+			t.Fatalf("history protocol version = %q, want %q", history.ProtocolVersion, protocol.Version)
+		}
+		if len(history.Tasks) != 1 || history.Tasks[0].TaskID != "001" || history.Tasks[0].Status != "complete" {
+			t.Fatalf("history tasks = %#v", history.Tasks)
+		}
+
+		state := readStateFile(t, root)
+		if state.TaskHistory == nil || len(state.TaskHistory.Tasks) != 1 {
+			t.Fatalf("state task history = %#v", state.TaskHistory)
+		}
+	})
+}
+
 func TestLanguageAliasSupportsChineseLanguage(t *testing.T) {
 	withTempCWD(t, func(root string) {
 		writeFile(t, root, "README.md", "# Example\n")
@@ -567,6 +649,17 @@ func writeFile(t *testing.T, root, rel, content string) {
 	}
 }
 
+func assertFileContains(t *testing.T, root, rel, want string) {
+	t.Helper()
+	data, err := os.ReadFile(filepath.Join(root, rel))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(data), want) {
+		t.Fatalf("%s missing %q:\n%s", rel, want, string(data))
+	}
+}
+
 func writeReadyCLIProject(t *testing.T, root string) {
 	t.Helper()
 	writeFile(t, root, "README.md", "# Example\n")
@@ -612,6 +705,13 @@ type stateFile struct {
 		TaskID          string `json:"taskId"`
 		Status          string `json:"status"`
 	} `json:"currentTask"`
+	TaskHistory *struct {
+		ProtocolVersion string `json:"protocolVersion"`
+		Tasks           []struct {
+			TaskID string `json:"taskId"`
+			Status string `json:"status"`
+		} `json:"tasks"`
+	} `json:"taskHistory"`
 	Check *struct {
 		ProtocolVersion string `json:"protocolVersion"`
 		TaskID          string `json:"taskId"`

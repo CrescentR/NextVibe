@@ -127,6 +127,15 @@ func runSuggest(root string, args []string, stdout, stderr io.Writer) int {
 }
 
 func runTask(root string, args []string, stdout, stderr io.Writer) int {
+	if len(args) > 0 {
+		switch args[0] {
+		case "complete":
+			return runTaskComplete(root, args[1:], stdout, stderr)
+		case "history":
+			return runTaskHistory(root, args[1:], stdout, stderr)
+		}
+	}
+
 	options, err := parseCommandOptions("task", args)
 	if err != nil {
 		return fail(stderr, err)
@@ -153,6 +162,58 @@ func runTask(root string, args []string, stdout, stderr io.Writer) int {
 		return writeJSON(stdout, stderr, result.Task)
 	}
 	writeTask(stdout, result.Task, result.Created, options.lang)
+	return 0
+}
+
+func runTaskComplete(root string, args []string, stdout, stderr io.Writer) int {
+	options, err := parseCommandOptions("task complete", args)
+	if err != nil {
+		return fail(stderr, err)
+	}
+	check := checker.CheckCurrent(root)
+	if err := state.SaveCheck(root, check); err != nil {
+		return fail(stderr, err)
+	}
+	if !check.Passed {
+		return fail(stderr, fmt.Errorf("current task checks did not pass: %s", check.NextAction))
+	}
+	task, err := taskgen.CompleteCurrent(root)
+	if err != nil {
+		return fail(stderr, err)
+	}
+	if err := state.SaveTask(root, task); err != nil {
+		return fail(stderr, err)
+	}
+	history, err := taskgen.LoadHistory(root)
+	if err != nil {
+		return fail(stderr, err)
+	}
+	if err := state.SaveHistory(root, history); err != nil {
+		return fail(stderr, err)
+	}
+	if options.jsonOut {
+		return writeJSON(stdout, stderr, task)
+	}
+	writeTask(stdout, task, false, options.lang)
+	return 0
+}
+
+func runTaskHistory(root string, args []string, stdout, stderr io.Writer) int {
+	options, err := parseCommandOptions("task history", args)
+	if err != nil {
+		return fail(stderr, err)
+	}
+	history, err := taskgen.LoadHistory(root)
+	if err != nil {
+		return fail(stderr, err)
+	}
+	if err := state.SaveHistory(root, history); err != nil {
+		return fail(stderr, err)
+	}
+	if options.jsonOut {
+		return writeJSON(stdout, stderr, history)
+	}
+	writeTaskHistory(stdout, history, options.lang)
 	return 0
 }
 
@@ -323,7 +384,7 @@ func writeUsage(w io.Writer, lang language) {
   %s init [--json] [--lang en|zh]
   %s scan [--json] [--lang en|zh]
   %s suggest [--json] [--lang en|zh]
-  %s task [--json] [--lang en|zh]
+  %s task [complete|history] [--json] [--lang en|zh]
   %s check [--json] [--lang en|zh]
   %s install <codex|claude|cursor|all> [--json] [--lang en|zh]
 
@@ -341,7 +402,7 @@ Usage:
   %s init [--json] [--lang en|zh]
   %s scan [--json] [--lang en|zh]
   %s suggest [--json] [--lang en|zh]
-  %s task [--json] [--lang en|zh]
+  %s task [complete|history] [--json] [--lang en|zh]
   %s check [--json] [--lang en|zh]
   %s install <codex|claude|cursor|all> [--json] [--lang en|zh]
 
@@ -392,6 +453,13 @@ func writeTask(w io.Writer, task taskgen.Task, created bool, lang language) {
 	writeStringList(w, lang, label(lang, "Allowed files"), task.AllowedFiles)
 	writeStringList(w, lang, label(lang, "Forbidden changes"), task.ForbiddenChanges)
 	writeStringList(w, lang, label(lang, "Acceptance criteria"), task.AcceptanceCriteria)
+}
+
+func writeTaskHistory(w io.Writer, history taskgen.History, lang language) {
+	fmt.Fprintf(w, "%s %s\n", brand.ProjectName, label(lang, "task history"))
+	for _, task := range history.Tasks {
+		fmt.Fprintf(w, "- %s %s [%s]\n", task.TaskID, task.Title, task.Status)
+	}
 }
 
 func writeCheck(w io.Writer, result checker.Result, lang language) {

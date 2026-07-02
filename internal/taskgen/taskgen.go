@@ -1,6 +1,7 @@
 package taskgen
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -32,6 +33,18 @@ type Result struct {
 	Created bool `json:"created"`
 }
 
+type HistoryEntry struct {
+	TaskID   string `json:"taskId"`
+	Title    string `json:"title"`
+	Status   string `json:"status"`
+	TaskFile string `json:"taskFile"`
+}
+
+type History struct {
+	ProtocolVersion string         `json:"protocolVersion"`
+	Tasks           []HistoryEntry `json:"tasks"`
+}
+
 func CurrentOrCreate(root string, suggestion planner.Suggestion) (Result, error) {
 	if _, err := workspace.Ensure(root); err != nil {
 		return Result{}, err
@@ -54,9 +67,75 @@ func CurrentOrCreate(root string, suggestion planner.Suggestion) (Result, error)
 	return Result{Task: task, Created: true}, nil
 }
 
+func CompleteCurrent(root string) (Task, error) {
+	task, ok := LoadCurrent(root)
+	if !ok {
+		return Task{}, fmt.Errorf("no current task found")
+	}
+	task.Status = "complete"
+	if err := writeTask(root, task); err != nil {
+		return Task{}, err
+	}
+	if err := writeCurrentTask(root, task); err != nil {
+		return Task{}, err
+	}
+	if err := RecordHistory(root, task); err != nil {
+		return Task{}, err
+	}
+	return task, nil
+}
+
 func LoadCurrent(root string) (Task, bool) {
 	currentPath := filepath.Join(root, brand.WorkspaceDir, "current-task.md")
 	return readCurrentTask(root, currentPath)
+}
+
+func LoadHistory(root string) (History, error) {
+	path := filepath.Join(root, brand.WorkspaceDir, "task-history.json")
+	history := History{
+		ProtocolVersion: protocol.Version,
+		Tasks:           []HistoryEntry{},
+	}
+	data, err := os.ReadFile(path)
+	if os.IsNotExist(err) {
+		return history, nil
+	}
+	if err != nil {
+		return History{}, err
+	}
+	if err := json.Unmarshal(data, &history); err != nil {
+		return History{}, err
+	}
+	history.ProtocolVersion = protocol.Version
+	if history.Tasks == nil {
+		history.Tasks = []HistoryEntry{}
+	}
+	return history, nil
+}
+
+func RecordHistory(root string, task Task) error {
+	history, err := LoadHistory(root)
+	if err != nil {
+		return err
+	}
+	entry := HistoryEntry{
+		TaskID:   task.TaskID,
+		Title:    task.Title,
+		Status:   task.Status,
+		TaskFile: task.TaskFile,
+	}
+	replaced := false
+	for i, existing := range history.Tasks {
+		if existing.TaskID == task.TaskID {
+			history.Tasks[i] = entry
+			replaced = true
+			break
+		}
+	}
+	if !replaced {
+		history.Tasks = append(history.Tasks, entry)
+	}
+	return writeHistory(root, history)
 }
 
 func taskIsComplete(task Task) bool {
@@ -158,6 +237,23 @@ func writeCurrentTask(root string, task Task) error {
 		"",
 	}, "\n")
 	return os.WriteFile(absPath, []byte(content), 0o644)
+}
+
+func writeHistory(root string, history History) error {
+	history.ProtocolVersion = protocol.Version
+	if history.Tasks == nil {
+		history.Tasks = []HistoryEntry{}
+	}
+	data, err := json.MarshalIndent(history, "", "  ")
+	if err != nil {
+		return err
+	}
+	data = append(data, '\n')
+	path := filepath.Join(root, brand.WorkspaceDir, "task-history.json")
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		return err
+	}
+	return os.WriteFile(path, data, 0o644)
 }
 
 func renderTask(task Task) string {
