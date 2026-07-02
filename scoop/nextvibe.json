@@ -1,0 +1,34 @@
+{
+  "version": "0.1.0",
+  "description": "Agent-native project navigation CLI.",
+  "homepage": "https://github.com/nextvibe/nextvibe",
+  "license": "MIT",
+  "architecture": {
+    "64bit": {
+      "url": "https://github.com/nextvibe/nextvibe/releases/download/v0.1.0/nextvibe_windows_amd64.zip",
+      "hash": "REPLACE_WITH_WINDOWS_AMD64_SHA256",
+      "extract_dir": "nextvibe_windows_amd64"
+    },
+    "arm64": {
+      "url": "https://github.com/nextvibe/nextvibe/releases/download/v0.1.0/nextvibe_windows_arm64.zip",
+      "hash": "REPLACE_WITH_WINDOWS_ARM64_SHA256",
+      "extract_dir": "nextvibe_windows_arm64"
+    }
+  },
+  "bin": "nextvibe.exe",
+  "checkver": {
+    "github": "https://github.com/nextvibe/nextvibe"
+  },
+  "autoupdate": {
+    "architecture": {
+      "64bit": {
+        "url": "https://github.com/nextvibe/nextvibe/releases/download/v$version/nextvibe_windows_amd64.zip",
+        "extract_dir": "nextvibe_windows_amd64"
+      },
+      "arm64": {
+        "url": "https://github.com/nextvibe/nextvibe/releases/download/v$version/nextvibe_windows_arm64.zip",
+        "extract_dir": "nextvibe_windows_arm64"
+      }
+    }
+  }
+}

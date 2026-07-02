@@ -112,6 +112,8 @@ Expected result:
 | `nextvibe task` | Create or read the active task file |
 | `nextvibe check` | Verify completion evidence and task boundaries |
 | `nextvibe install all` | Install Codex, Claude Code, and Cursor instructions |
+| `nextvibe install verify` | Verify generated agent integration files |
+| `nextvibe mcp` | Run the stdio MCP server |
 
 Agent-facing commands support `--json`. Text commands support
 `--lang en|zh` or `--language en|zh`.
@@ -251,6 +253,9 @@ In scope now:
 - Current task generation
 - Evidence-based task checking
 - Codex, Claude Code, and Cursor integration files
+- MCP stdio server for scan, suggest, task, and check
+- npm, Homebrew, and Scoop distribution scaffolding
+- Release verification scripts and GitHub Actions
 - Stable JSON output for agents
 - English and Chinese text output
 
@@ -260,13 +265,11 @@ Out of scope for now:
 - Cloud service
 - Account system
 - Model API integration
-- MCP server
 - Prompt marketplace
-- Package-manager distribution
 
-MCP can be added later as another way to expose the same local protocol. It
-should not change the core principle: NextVibe helps agents navigate local
-project state; it does not become the model.
+MCP is another way to expose the same local protocol. It should not change the
+core principle: NextVibe helps agents navigate local project state; it does not
+become the model.
 
 ## Project Map
 
@@ -279,12 +282,17 @@ project state; it does not become the model.
 | `internal/taskgen` | Current task and task file generation |
 | `internal/checker` | Evidence-based task completion checks |
 | `internal/installer` | Agent integration file generation |
+| `internal/mcp` | Stdio MCP server |
+| `npm/`, `Formula/`, `scoop/` | Package-manager distribution surfaces |
 | `docs/` | Usage, release, roadmap, deployment, and product notes |
 
 ## More Docs
 
 - [Usage](docs/usage.md)
+- [MCP](docs/mcp.md)
+- [Distribution](docs/distribution.md)
 - [Release](docs/release.md)
+- [Release Checklist](docs/release-checklist.md)
 - [Deployment](docs/deployment.md)
 - [Roadmap](docs/roadmap.md)
 - [Vision](docs/vision.md)

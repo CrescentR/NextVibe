@@ -11,6 +11,7 @@ import (
 	"github.com/nextvibe/nextvibe/internal/checker"
 	"github.com/nextvibe/nextvibe/internal/detector"
 	"github.com/nextvibe/nextvibe/internal/installer"
+	"github.com/nextvibe/nextvibe/internal/mcp"
 	"github.com/nextvibe/nextvibe/internal/output"
 	"github.com/nextvibe/nextvibe/internal/planner"
 	"github.com/nextvibe/nextvibe/internal/scanner"
@@ -61,6 +62,8 @@ func Run(args []string, stdout, stderr io.Writer) int {
 		return runCheck(root, args[1:], stdout, stderr)
 	case "install":
 		return runInstall(root, args[1:], stdout, stderr)
+	case "mcp":
+		return runMCP(root, args[1:], stdout, stderr)
 	default:
 		fmt.Fprintf(stderr, "error: unknown command %q\n\n", command)
 		writeUsage(stderr, languageEnglish)
@@ -279,6 +282,17 @@ func runInstallVerify(root string, args []string, stdout, stderr io.Writer) int 
 	return 0
 }
 
+func runMCP(root string, args []string, stdout, stderr io.Writer) int {
+	serverRoot, err := mcp.RootFromArgs(args, root)
+	if err != nil {
+		return fail(stderr, err)
+	}
+	if err := mcp.Serve(serverRoot, os.Stdin, stdout, stderr); err != nil {
+		return fail(stderr, err)
+	}
+	return 0
+}
+
 func parseInstallArgs(args []string) (commandOptions, string, error) {
 	options := commandOptions{lang: languageEnglish}
 	target := ""
@@ -457,11 +471,12 @@ func writeUsage(w io.Writer, lang language) {
   %s check [--json] [--lang en|zh]
   %s install <codex|claude|cursor|all> [--json] [--lang en|zh]
   %s install verify [codex|claude|cursor|all] [--json] [--lang en|zh]
+  %s mcp [--root <path>]
 
 选项:
   --lang, --language  选择文本输出语言：en 或 zh。JSON 输出保持稳定结构。
 
-`, brand.ProjectName, brand.CommandName, brand.CommandName, brand.CommandName, brand.CommandName, brand.CommandName, brand.CommandName, brand.CommandName)
+`, brand.ProjectName, brand.CommandName, brand.CommandName, brand.CommandName, brand.CommandName, brand.CommandName, brand.CommandName, brand.CommandName, brand.CommandName)
 		return
 	}
 	fmt.Fprintf(w, `%s
@@ -476,11 +491,12 @@ Usage:
   %s check [--json] [--lang en|zh]
   %s install <codex|claude|cursor|all> [--json] [--lang en|zh]
   %s install verify [codex|claude|cursor|all] [--json] [--lang en|zh]
+  %s mcp [--root <path>]
 
 Options:
   --lang, --language  Choose text output language: en or zh. JSON output keeps its stable structure.
 
-`, brand.ProjectName, brand.CommandName, brand.CommandName, brand.CommandName, brand.CommandName, brand.CommandName, brand.CommandName, brand.CommandName)
+`, brand.ProjectName, brand.CommandName, brand.CommandName, brand.CommandName, brand.CommandName, brand.CommandName, brand.CommandName, brand.CommandName, brand.CommandName)
 }
 
 func writeInit(w io.Writer, result workspace.InitResult, lang language) {

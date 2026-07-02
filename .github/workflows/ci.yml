@@ -34,6 +34,15 @@ jobs:
       - name: Build CLI
         run: go build ./cmd/nextvibe
 
+      - name: Release verification
+        if: runner.os != 'Windows'
+        run: sh scripts/verify-release.sh
+
+      - name: Release verification
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: ./scripts/verify-release.ps1
+
   cross-compile:
     name: Cross-compile (${{ matrix.goos }}/${{ matrix.goarch }})
     runs-on: ubuntu-latest

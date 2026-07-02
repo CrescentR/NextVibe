@@ -127,6 +127,28 @@ nextvibe task --json
 nextvibe check --json
 ```
 
+Verify installed integrations:
+
+```bash
+nextvibe install verify --json
+```
+
+## Run As An MCP Server
+
+```bash
+nextvibe mcp
+nextvibe mcp --root /path/to/project
+```
+
+MCP clients can call:
+
+- `nextvibe_scan`
+- `nextvibe_suggest`
+- `nextvibe_task`
+- `nextvibe_check`
+
+See [MCP](mcp.md) for client configuration.
+
 ## Output Language
 
 Human-readable text output supports English and Chinese:
@@ -178,6 +200,17 @@ still use allowed-file checks. Newer task files can add:
 
 `check --json` runs required commands, checks evidence files or directories, and
 still verifies changed files stay inside the active task boundary.
+
+## Package Manager Install Surfaces
+
+Distribution scaffolding is available for:
+
+- npm: `package.json`, `npm/nextvibe.js`, `npm/postinstall.js`
+- Homebrew: `Formula/nextvibe.rb`
+- Scoop: `scoop/nextvibe.json`
+
+See [Distribution](distribution.md) and [Release Checklist](release-checklist.md)
+for the release-time checksum replacement points and quality gate.
 
 ## Test Command Detection
 

@@ -3,12 +3,14 @@ package tests
 import (
 	"bytes"
 	"encoding/json"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/nextvibe/nextvibe/internal/cli"
+	"github.com/nextvibe/nextvibe/internal/mcp"
 	"github.com/nextvibe/nextvibe/internal/protocol"
 )
 
@@ -273,6 +275,43 @@ func TestCheckJSONPassesDeclaredEvidenceAndRequiredCommand(t *testing.T) {
 		}
 		if !hasCheck(result.Checks, "required command go test ./...", true) {
 			t.Fatalf("check did not report required command success: %#v", result.Checks)
+		}
+	})
+}
+
+func TestMCPServerListsAndCallsScanTool(t *testing.T) {
+	withTempCWD(t, func(root string) {
+		writeReadyCLIProject(t, root)
+
+		input := strings.Join([]string{
+			`{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-11-25","capabilities":{},"clientInfo":{"name":"test","version":"0.0.0"}}}`,
+			`{"jsonrpc":"2.0","id":2,"method":"tools/list"}`,
+			`{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"nextvibe_scan","arguments":{}}}`,
+			"",
+		}, "\n")
+
+		var stdout bytes.Buffer
+		var stderr bytes.Buffer
+		if err := mcp.Serve(root, strings.NewReader(input), &stdout, &stderr); err != nil {
+			t.Fatalf("mcp serve returned error: %v, stderr: %s", err, stderr.String())
+		}
+
+		responses := decodeJSONRPCResponses(t, stdout.String())
+		if len(responses) != 3 {
+			t.Fatalf("response len = %d, want 3\n%s", len(responses), stdout.String())
+		}
+		if valueAt(responses[0], "result", "serverInfo", "name") != "nextvibe" {
+			t.Fatalf("initialize response = %#v", responses[0])
+		}
+		tools, ok := valueAt(responses[1], "result", "tools").([]any)
+		if !ok || !hasMCPTool(tools, "nextvibe_scan") || !hasMCPTool(tools, "nextvibe_check") {
+			t.Fatalf("tools/list response = %#v", responses[1])
+		}
+		if valueAt(responses[2], "result", "structuredContent", "protocolVersion") != protocol.Version {
+			t.Fatalf("tools/call scan response = %#v", responses[2])
+		}
+		if valueAt(responses[2], "result", "structuredContent", "projectName") == "" {
+			t.Fatalf("scan response missing projectName: %#v", responses[2])
 		}
 	})
 }
@@ -990,6 +1029,45 @@ func hasCheck(checks []struct {
 }, name string, passed bool) bool {
 	for _, check := range checks {
 		if check.Name == name && check.Passed == passed {
+			return true
+		}
+	}
+	return false
+}
+
+func decodeJSONRPCResponses(t *testing.T, output string) []map[string]any {
+	t.Helper()
+	decoder := json.NewDecoder(strings.NewReader(output))
+	responses := []map[string]any{}
+	for {
+		var response map[string]any
+		if err := decoder.Decode(&response); err != nil {
+			if err == io.EOF {
+				break
+			}
+			t.Fatalf("invalid JSON-RPC response stream: %v\n%s", err, output)
+		}
+		responses = append(responses, response)
+	}
+	return responses
+}
+
+func valueAt(value any, path ...string) any {
+	current := value
+	for _, key := range path {
+		object, ok := current.(map[string]any)
+		if !ok {
+			return nil
+		}
+		current = object[key]
+	}
+	return current
+}
+
+func hasMCPTool(tools []any, name string) bool {
+	for _, item := range tools {
+		tool, ok := item.(map[string]any)
+		if ok && tool["name"] == name {
 			return true
 		}
 	}
