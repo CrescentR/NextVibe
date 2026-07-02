@@ -1,0 +1,107 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build (${{ matrix.goos }}/${{ matrix.goarch }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - goos: linux
+            goarch: amd64
+            package: nextvibe_linux_amd64
+            format: tar.gz
+          - goos: linux
+            goarch: arm64
+            package: nextvibe_linux_arm64
+            format: tar.gz
+          - goos: darwin
+            goarch: amd64
+            package: nextvibe_darwin_amd64
+            format: tar.gz
+          - goos: darwin
+            goarch: arm64
+            package: nextvibe_darwin_arm64
+            format: tar.gz
+          - goos: windows
+            goarch: amd64
+            package: nextvibe_windows_amd64
+            format: zip
+          - goos: windows
+            goarch: arm64
+            package: nextvibe_windows_arm64
+            format: zip
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.22.x"
+          cache: true
+
+      - name: Build binary
+        env:
+          CGO_ENABLED: "0"
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+        run: |
+          mkdir -p dist
+          binary="nextvibe"
+          if [ "$GOOS" = "windows" ]; then
+            binary="nextvibe.exe"
+          fi
+          go build -trimpath -ldflags="-s -w" -o "dist/${binary}" ./cmd/nextvibe
+
+      - name: Package archive
+        run: |
+          package="${{ matrix.package }}"
+          binary="nextvibe"
+          if [ "${{ matrix.goos }}" = "windows" ]; then
+            binary="nextvibe.exe"
+          fi
+
+          mkdir -p "release/${package}"
+          cp "dist/${binary}" "release/${package}/${binary}"
+          cp README.md LICENSE "release/${package}/"
+
+          cd release
+          if [ "${{ matrix.format }}" = "zip" ]; then
+            zip -r "../dist/${package}.zip" "${package}"
+          else
+            tar -czf "../dist/${package}.tar.gz" "${package}"
+          fi
+
+      - name: Upload archive
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.package }}
+          path: dist/${{ matrix.package }}.${{ matrix.format }}
+          if-no-files-found: error
+
+  publish:
+    name: Publish GitHub release
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Download archives
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Attach archives
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+          generate_release_notes: true

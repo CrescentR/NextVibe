@@ -62,6 +62,24 @@ On Windows this creates `nextvibe.exe`:
 .\nextvibe.exe scan --json
 ```
 
+## Platform Support
+
+NextVibe is intended to run on Windows, macOS, and Linux.
+
+Continuous integration runs the test suite on all three operating systems and
+cross-compiles release binaries for:
+
+- `linux/amd64`
+- `linux/arm64`
+- `darwin/amd64`
+- `darwin/arm64`
+- `windows/amd64`
+- `windows/arm64`
+
+Tagged GitHub releases publish `.tar.gz` archives for macOS and Linux and `.zip`
+archives for Windows. See [docs/release.md](docs/release.md) for the maintainer
+release flow.
+
 ## Core Commands
 
 ```bash
@@ -117,6 +135,14 @@ CLAUDE.md
 ```
 
 Existing files are preserved. NextVibe appends or updates a marked section instead of replacing user-authored instructions.
+
+## Install From A Release
+
+Download the archive for your operating system from the GitHub release page,
+extract it, and put the `nextvibe` binary on your `PATH`.
+
+On Windows the binary is named `nextvibe.exe`. On macOS and Linux it is named
+`nextvibe`.
 
 ## Agent Workflow
 
@@ -217,6 +243,7 @@ In scope for the first version:
 - basic task checking
 - Codex, Claude Code, and Cursor integration files
 - stable JSON output for agents
+- cross-platform CI and release archives for Windows, macOS, and Linux
 
 Out of scope for now:
 

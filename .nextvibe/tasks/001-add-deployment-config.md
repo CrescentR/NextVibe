@@ -1,7 +1,7 @@
 # 001 - Add a minimal deployment configuration
 
 Task ID: 001
-Status: active
+Status: complete
 Title: Add a minimal deployment configuration
 
 ## Background
@@ -30,4 +30,3 @@ Create a minimal local deployment path that can be verified without cloud servic
 - Unneeded local files are excluded from the image
 - Local build and run commands are documented
 - No cloud account or hosted service is required
-

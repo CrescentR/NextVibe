@@ -12,6 +12,8 @@ Status: current.
 - check basic task completion
 - install Codex, Claude Code, and Cursor integration files
 - return stable JSON for agent consumption
+- run CI on Windows, macOS, and Linux
+- publish basic cross-platform release archives from version tags
 
 ## Phase 2: Better Rules
 

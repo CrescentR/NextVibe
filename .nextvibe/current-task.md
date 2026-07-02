@@ -1,9 +1,9 @@
 # Current Task
 
-Task ID: 001
+Task ID: 003
 Status: active
-Title: Add a minimal deployment configuration
-Task file: .nextvibe/tasks/001-add-deployment-config.md
+Title: Record development progress and workflow
+Task file: .nextvibe/tasks/003-record-development-progress-and-workflow.md
 
 Run:
 
