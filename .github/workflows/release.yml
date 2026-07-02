@@ -33,6 +33,7 @@ jobs:
       - name: Ensure release exists
         env:
           GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
         run: |
           if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
             echo "Release ${GITHUB_REF_NAME} already exists"
@@ -117,6 +118,7 @@ jobs:
       - name: Sync archive to GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
         run: gh release upload "$GITHUB_REF_NAME" "dist/${{ matrix.package }}.${{ matrix.format }}" --clobber
 
       - name: Upload archive
@@ -145,4 +147,5 @@ jobs:
       - name: Attach checksums
         env:
           GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
         run: gh release upload "$GITHUB_REF_NAME" dist/checksums.txt --clobber
