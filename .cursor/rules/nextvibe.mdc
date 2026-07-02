@@ -1,0 +1,21 @@
+<!-- NEXTVIBE:START -->
+---
+description: Use NextVibe before broad project continuation work
+globs: "**/*"
+alwaysApply: true
+---
+
+# NextVibe
+
+Before continuing broad project development, inspect NextVibe project state.
+
+Use:
+- `nextvibe scan --json`
+- `nextvibe suggest --json`
+- `nextvibe task --json`
+
+Respect task boundaries and acceptance criteria.
+
+After editing, run:
+- `nextvibe check --json`
+<!-- NEXTVIBE:END -->

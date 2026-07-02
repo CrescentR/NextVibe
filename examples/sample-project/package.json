@@ -1,0 +1,11 @@
+{
+  "name": "sample-project",
+  "private": true,
+  "dependencies": {
+    "react": "^18.0.0",
+    "vite": "^5.0.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0"
+  }
+}
