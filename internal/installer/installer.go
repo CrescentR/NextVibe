@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/nextvibe/nextvibe/internal/brand"
+	"github.com/nextvibe/nextvibe/internal/protocol"
 )
 
 const (
@@ -20,9 +21,10 @@ type FileResult struct {
 }
 
 type Result struct {
-	Target  string       `json:"target"`
-	Files   []FileResult `json:"files"`
-	Message string       `json:"message"`
+	ProtocolVersion string       `json:"protocolVersion"`
+	Target          string       `json:"target"`
+	Files           []FileResult `json:"files"`
+	Message         string       `json:"message"`
 }
 
 func Install(root, target string) (Result, error) {
@@ -42,7 +44,7 @@ func Install(root, target string) (Result, error) {
 }
 
 func installAll(root string) (Result, error) {
-	combined := Result{Target: "all", Files: []FileResult{}}
+	combined := Result{ProtocolVersion: protocol.Version, Target: "all", Files: []FileResult{}}
 	for _, target := range []string{"codex", "claude", "cursor"} {
 		result, err := Install(root, target)
 		if err != nil {
@@ -60,9 +62,10 @@ func installCodex(root string) (Result, error) {
 		return Result{}, err
 	}
 	return Result{
-		Target:  "codex",
-		Files:   []FileResult{file},
-		Message: "Codex integration installed.",
+		ProtocolVersion: protocol.Version,
+		Target:          "codex",
+		Files:           []FileResult{file},
+		Message:         "Codex integration installed.",
 	}, nil
 }
 
@@ -84,9 +87,10 @@ func installClaude(root string) (Result, error) {
 		files = append(files, file)
 	}
 	return Result{
-		Target:  "claude",
-		Files:   files,
-		Message: "Claude Code integration installed.",
+		ProtocolVersion: protocol.Version,
+		Target:          "claude",
+		Files:           files,
+		Message:         "Claude Code integration installed.",
 	}, nil
 }
 
@@ -96,9 +100,10 @@ func installCursor(root string) (Result, error) {
 		return Result{}, err
 	}
 	return Result{
-		Target:  "cursor",
-		Files:   []FileResult{file},
-		Message: "Cursor integration installed.",
+		ProtocolVersion: protocol.Version,
+		Target:          "cursor",
+		Files:           []FileResult{file},
+		Message:         "Cursor integration installed.",
 	}, nil
 }
 

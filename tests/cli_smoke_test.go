@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/nextvibe/nextvibe/internal/cli"
+	"github.com/nextvibe/nextvibe/internal/protocol"
 )
 
 func TestInstallAllJSONSupportsFlagAfterTarget(t *testing.T) {
@@ -142,6 +143,42 @@ func TestScanJSONDetectsTestCommands(t *testing.T) {
 	})
 }
 
+func TestScanJSONIncludesProtocolVersionAndWritesState(t *testing.T) {
+	withTempCWD(t, func(root string) {
+		writeReadyCLIProject(t, root)
+
+		var stdout bytes.Buffer
+		var stderr bytes.Buffer
+
+		code := cli.Run([]string{"scan", "--json"}, &stdout, &stderr)
+		if code != 0 {
+			t.Fatalf("scan returned %d, stderr: %s", code, stderr.String())
+		}
+
+		var result struct {
+			ProtocolVersion string `json:"protocolVersion"`
+			ProjectName     string `json:"projectName"`
+		}
+		if err := json.Unmarshal(stdout.Bytes(), &result); err != nil {
+			t.Fatalf("scan output is not valid JSON: %v\n%s", err, stdout.String())
+		}
+		if result.ProtocolVersion != protocol.Version {
+			t.Fatalf("protocol version = %q, want %q", result.ProtocolVersion, protocol.Version)
+		}
+
+		state := readStateFile(t, root)
+		if state.ProtocolVersion != protocol.Version {
+			t.Fatalf("state protocol version = %q, want %q", state.ProtocolVersion, protocol.Version)
+		}
+		if state.ProjectName != result.ProjectName {
+			t.Fatalf("state project name = %q, want %q", state.ProjectName, result.ProjectName)
+		}
+		if state.Scan == nil || state.Scan.ProtocolVersion != protocol.Version {
+			t.Fatalf("state scan missing protocol version: %#v", state.Scan)
+		}
+	})
+}
+
 func TestScanJSONSuppressesAPIAndDatabaseRisksForCLIOnlyGoProject(t *testing.T) {
 	withTempCWD(t, func(root string) {
 		writeFile(t, root, "README.md", "# Example\n")
@@ -234,7 +271,8 @@ func TestSuggestJSONGuidesReadyProjectPlanning(t *testing.T) {
 		}
 
 		var result struct {
-			Recommendation struct {
+			ProtocolVersion string `json:"protocolVersion"`
+			Recommendation  struct {
 				ID     string `json:"id"`
 				Title  string `json:"title"`
 				Reason string `json:"reason"`
@@ -247,6 +285,9 @@ func TestSuggestJSONGuidesReadyProjectPlanning(t *testing.T) {
 		}
 		if err := json.Unmarshal(stdout.Bytes(), &result); err != nil {
 			t.Fatalf("suggest output is not valid JSON: %v\n%s", err, stdout.String())
+		}
+		if result.ProtocolVersion != protocol.Version {
+			t.Fatalf("protocol version = %q, want %q", result.ProtocolVersion, protocol.Version)
 		}
 		if result.Recommendation.ID != "plan-next-development-slice" {
 			t.Fatalf("recommendation id = %q", result.Recommendation.ID)
@@ -293,12 +334,16 @@ func TestTaskJSONCreatesPlanningTaskForReadyProject(t *testing.T) {
 		}
 
 		var task struct {
-			TaskID string `json:"taskId"`
-			Title  string `json:"title"`
-			Goal   string `json:"goal"`
+			ProtocolVersion string `json:"protocolVersion"`
+			TaskID          string `json:"taskId"`
+			Title           string `json:"title"`
+			Goal            string `json:"goal"`
 		}
 		if err := json.Unmarshal(stdout.Bytes(), &task); err != nil {
 			t.Fatalf("task output is not valid JSON: %v\n%s", err, stdout.String())
+		}
+		if task.ProtocolVersion != protocol.Version {
+			t.Fatalf("protocol version = %q, want %q", task.ProtocolVersion, protocol.Version)
 		}
 		if task.TaskID != "001" {
 			t.Fatalf("task id = %q, want 001", task.TaskID)
@@ -308,6 +353,51 @@ func TestTaskJSONCreatesPlanningTaskForReadyProject(t *testing.T) {
 		}
 		if task.Goal != "Research the local project state and write the next bounded development plan before implementation." {
 			t.Fatalf("task goal = %q", task.Goal)
+		}
+	})
+}
+
+func TestTaskAndCheckUpdateStateJSON(t *testing.T) {
+	withTempCWD(t, func(root string) {
+		writeReadyCLIProject(t, root)
+
+		var taskStdout bytes.Buffer
+		var taskStderr bytes.Buffer
+		if code := cli.Run([]string{"task", "--json"}, &taskStdout, &taskStderr); code != 0 {
+			t.Fatalf("task returned %d, stderr: %s", code, taskStderr.String())
+		}
+
+		stateAfterTask := readStateFile(t, root)
+		if stateAfterTask.Suggestion == nil || stateAfterTask.Suggestion.ProtocolVersion != protocol.Version {
+			t.Fatalf("state suggestion missing protocol version: %#v", stateAfterTask.Suggestion)
+		}
+		if stateAfterTask.CurrentTask == nil || stateAfterTask.CurrentTask.TaskID != "001" {
+			t.Fatalf("state current task = %#v", stateAfterTask.CurrentTask)
+		}
+
+		var checkStdout bytes.Buffer
+		var checkStderr bytes.Buffer
+		if code := cli.Run([]string{"check", "--json"}, &checkStdout, &checkStderr); code != 0 {
+			t.Fatalf("check returned %d, stderr: %s", code, checkStderr.String())
+		}
+
+		var checkResult struct {
+			ProtocolVersion string `json:"protocolVersion"`
+			TaskID          string `json:"taskId"`
+		}
+		if err := json.Unmarshal(checkStdout.Bytes(), &checkResult); err != nil {
+			t.Fatalf("check output is not valid JSON: %v\n%s", err, checkStdout.String())
+		}
+		if checkResult.ProtocolVersion != protocol.Version {
+			t.Fatalf("check protocol version = %q, want %q", checkResult.ProtocolVersion, protocol.Version)
+		}
+
+		stateAfterCheck := readStateFile(t, root)
+		if stateAfterCheck.Check == nil || stateAfterCheck.Check.TaskID != checkResult.TaskID {
+			t.Fatalf("state check = %#v, check result = %#v", stateAfterCheck.Check, checkResult)
+		}
+		if stateAfterCheck.CurrentTask == nil || stateAfterCheck.CurrentTask.Status != stateAfterCheck.Check.Status {
+			t.Fatalf("state current task status did not follow check: task=%#v check=%#v", stateAfterCheck.CurrentTask, stateAfterCheck.Check)
 		}
 	})
 }
@@ -506,6 +596,40 @@ func writeCurrentTaskFixture(t *testing.T, root, id, status, title string) strin
 		"Task file: "+taskFile+"\n\n"+
 		"Run:\n\n```bash\nnextvibe task --json\nnextvibe check --json\n```\n")
 	return taskFile
+}
+
+type stateFile struct {
+	ProtocolVersion string `json:"protocolVersion"`
+	ProjectName     string `json:"projectName"`
+	Scan            *struct {
+		ProtocolVersion string `json:"protocolVersion"`
+	} `json:"scan"`
+	Suggestion *struct {
+		ProtocolVersion string `json:"protocolVersion"`
+	} `json:"suggestion"`
+	CurrentTask *struct {
+		ProtocolVersion string `json:"protocolVersion"`
+		TaskID          string `json:"taskId"`
+		Status          string `json:"status"`
+	} `json:"currentTask"`
+	Check *struct {
+		ProtocolVersion string `json:"protocolVersion"`
+		TaskID          string `json:"taskId"`
+		Status          string `json:"status"`
+	} `json:"check"`
+}
+
+func readStateFile(t *testing.T, root string) stateFile {
+	t.Helper()
+	data, err := os.ReadFile(filepath.Join(root, ".nextvibe", "state.json"))
+	if err != nil {
+		t.Fatalf("expected state.json: %v", err)
+	}
+	var state stateFile
+	if err := json.Unmarshal(data, &state); err != nil {
+		t.Fatalf("state.json is not valid JSON: %v\n%s", err, string(data))
+	}
+	return state
 }
 
 func contains(values []string, needle string) bool {

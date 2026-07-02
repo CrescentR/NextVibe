@@ -10,10 +10,12 @@ import (
 
 	"github.com/nextvibe/nextvibe/internal/brand"
 	"github.com/nextvibe/nextvibe/internal/planner"
+	"github.com/nextvibe/nextvibe/internal/protocol"
 	"github.com/nextvibe/nextvibe/internal/workspace"
 )
 
 type Task struct {
+	ProtocolVersion    string   `json:"protocolVersion"`
 	TaskID             string   `json:"taskId"`
 	Title              string   `json:"title"`
 	Status             string   `json:"status"`
@@ -69,6 +71,7 @@ func taskFromSuggestion(root string, suggestion planner.Suggestion) Task {
 	}
 	taskFile := filepath.ToSlash(filepath.Join(brand.WorkspaceDir, "tasks", id+"-"+slug+".md"))
 	return Task{
+		ProtocolVersion:    protocol.Version,
 		TaskID:             id,
 		Title:              suggestion.Recommendation.Title,
 		Status:             "active",
@@ -212,6 +215,7 @@ func readTaskFile(path string) (Task, bool) {
 	}
 	content := string(data)
 	task := Task{
+		ProtocolVersion:    protocol.Version,
 		TaskID:             readField(content, "Task ID:"),
 		Status:             readField(content, "Status:"),
 		Title:              readField(content, "Title:"),

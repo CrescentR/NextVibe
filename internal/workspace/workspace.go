@@ -6,13 +6,15 @@ import (
 	"strings"
 
 	"github.com/nextvibe/nextvibe/internal/brand"
+	"github.com/nextvibe/nextvibe/internal/protocol"
 )
 
 type InitResult struct {
-	WorkspaceDir string   `json:"workspaceDir"`
-	Created      []string `json:"created"`
-	Existing     []string `json:"existing"`
-	Message      string   `json:"message"`
+	ProtocolVersion string   `json:"protocolVersion"`
+	WorkspaceDir    string   `json:"workspaceDir"`
+	Created         []string `json:"created"`
+	Existing        []string `json:"existing"`
+	Message         string   `json:"message"`
 }
 
 type fileTemplate struct {
@@ -22,9 +24,10 @@ type fileTemplate struct {
 
 func Ensure(root string) (InitResult, error) {
 	result := InitResult{
-		WorkspaceDir: brand.WorkspaceDir,
-		Created:      []string{},
-		Existing:     []string{},
+		ProtocolVersion: protocol.Version,
+		WorkspaceDir:    brand.WorkspaceDir,
+		Created:         []string{},
+		Existing:        []string{},
 	}
 
 	tasksDir := filepath.Join(root, brand.WorkspaceDir, "tasks")

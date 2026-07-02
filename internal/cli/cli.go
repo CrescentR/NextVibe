@@ -14,6 +14,7 @@ import (
 	"github.com/nextvibe/nextvibe/internal/output"
 	"github.com/nextvibe/nextvibe/internal/planner"
 	"github.com/nextvibe/nextvibe/internal/scanner"
+	"github.com/nextvibe/nextvibe/internal/state"
 	"github.com/nextvibe/nextvibe/internal/taskgen"
 	"github.com/nextvibe/nextvibe/internal/workspace"
 )
@@ -92,6 +93,9 @@ func runScan(root string, args []string, stdout, stderr io.Writer) int {
 	if err != nil {
 		return fail(stderr, err)
 	}
+	if err := state.SaveScan(root, result); err != nil {
+		return fail(stderr, err)
+	}
 	if options.jsonOut {
 		return writeJSON(stdout, stderr, result)
 	}
@@ -104,8 +108,15 @@ func runSuggest(root string, args []string, stdout, stderr io.Writer) int {
 	if err != nil {
 		return fail(stderr, err)
 	}
-	result, err := suggestProject(root)
+	scan, err := scanProject(root)
 	if err != nil {
+		return fail(stderr, err)
+	}
+	if err := state.SaveScan(root, scan); err != nil {
+		return fail(stderr, err)
+	}
+	result := planner.Suggest(scan)
+	if err := state.SaveSuggestion(root, result); err != nil {
 		return fail(stderr, err)
 	}
 	if options.jsonOut {
@@ -120,12 +131,22 @@ func runTask(root string, args []string, stdout, stderr io.Writer) int {
 	if err != nil {
 		return fail(stderr, err)
 	}
-	suggestion, err := suggestProject(root)
+	scan, err := scanProject(root)
 	if err != nil {
+		return fail(stderr, err)
+	}
+	if err := state.SaveScan(root, scan); err != nil {
+		return fail(stderr, err)
+	}
+	suggestion := planner.Suggest(scan)
+	if err := state.SaveSuggestion(root, suggestion); err != nil {
 		return fail(stderr, err)
 	}
 	result, err := taskgen.CurrentOrCreate(root, suggestion)
 	if err != nil {
+		return fail(stderr, err)
+	}
+	if err := state.SaveTask(root, result.Task); err != nil {
 		return fail(stderr, err)
 	}
 	if options.jsonOut {
@@ -141,6 +162,9 @@ func runCheck(root string, args []string, stdout, stderr io.Writer) int {
 		return fail(stderr, err)
 	}
 	result := checker.CheckCurrent(root)
+	if err := state.SaveCheck(root, result); err != nil {
+		return fail(stderr, err)
+	}
 	if options.jsonOut {
 		return writeJSON(stdout, stderr, result)
 	}

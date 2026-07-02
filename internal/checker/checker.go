@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/nextvibe/nextvibe/internal/brand"
+	"github.com/nextvibe/nextvibe/internal/protocol"
 	"github.com/nextvibe/nextvibe/internal/taskgen"
 )
 
@@ -17,20 +18,22 @@ type Check struct {
 }
 
 type Result struct {
-	TaskID     string  `json:"taskId"`
-	Status     string  `json:"status"`
-	Passed     bool    `json:"passed"`
-	Checks     []Check `json:"checks"`
-	NextAction string  `json:"nextAction"`
+	ProtocolVersion string  `json:"protocolVersion"`
+	TaskID          string  `json:"taskId"`
+	Status          string  `json:"status"`
+	Passed          bool    `json:"passed"`
+	Checks          []Check `json:"checks"`
+	NextAction      string  `json:"nextAction"`
 }
 
 func CheckCurrent(root string) Result {
 	task, ok := taskgen.LoadCurrent(root)
 	if !ok {
 		return Result{
-			TaskID: "",
-			Status: "no-active-task",
-			Passed: false,
+			ProtocolVersion: protocol.Version,
+			TaskID:          "",
+			Status:          "no-active-task",
+			Passed:          false,
 			Checks: []Check{
 				{Name: "active task exists", Passed: false},
 			},
@@ -73,11 +76,12 @@ func CheckCurrent(root string) Result {
 	}
 
 	return Result{
-		TaskID:     task.TaskID,
-		Status:     status,
-		Passed:     passed,
-		Checks:     checks,
-		NextAction: nextAction,
+		ProtocolVersion: protocol.Version,
+		TaskID:          task.TaskID,
+		Status:          status,
+		Passed:          passed,
+		Checks:          checks,
+		NextAction:      nextAction,
 	}
 }
 

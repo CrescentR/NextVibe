@@ -3,6 +3,7 @@ package detector
 import (
 	"sort"
 
+	"github.com/nextvibe/nextvibe/internal/protocol"
 	"github.com/nextvibe/nextvibe/internal/scanner"
 )
 
@@ -23,14 +24,15 @@ type Stage struct {
 }
 
 type Result struct {
-	ProjectName    string   `json:"projectName"`
-	DetectedStacks []string `json:"detectedStacks"`
-	KeyFiles       []string `json:"keyFiles"`
-	KeyDirectories []string `json:"keyDirectories"`
-	TestCommands   []string `json:"testCommands,omitempty"`
-	Signals        Signals  `json:"signals"`
-	Stage          Stage    `json:"stage"`
-	Risks          []string `json:"risks"`
+	ProtocolVersion string   `json:"protocolVersion"`
+	ProjectName     string   `json:"projectName"`
+	DetectedStacks  []string `json:"detectedStacks"`
+	KeyFiles        []string `json:"keyFiles"`
+	KeyDirectories  []string `json:"keyDirectories"`
+	TestCommands    []string `json:"testCommands,omitempty"`
+	Signals         Signals  `json:"signals"`
+	Stage           Stage    `json:"stage"`
+	Risks           []string `json:"risks"`
 }
 
 func Detect(inventory scanner.Inventory) Result {
@@ -42,14 +44,15 @@ func Detect(inventory scanner.Inventory) Result {
 	risks := detectRisks(inventory, signals, hasReadme)
 
 	return Result{
-		ProjectName:    inventory.ProjectName,
-		DetectedStacks: stacks,
-		KeyFiles:       inventory.KeyFiles,
-		KeyDirectories: inventory.KeyDirectories,
-		TestCommands:   testCommands,
-		Signals:        signals,
-		Stage:          stage,
-		Risks:          risks,
+		ProtocolVersion: protocol.Version,
+		ProjectName:     inventory.ProjectName,
+		DetectedStacks:  stacks,
+		KeyFiles:        inventory.KeyFiles,
+		KeyDirectories:  inventory.KeyDirectories,
+		TestCommands:    testCommands,
+		Signals:         signals,
+		Stage:           stage,
+		Risks:           risks,
 	}
 }
 

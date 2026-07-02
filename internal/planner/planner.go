@@ -3,6 +3,7 @@ package planner
 import (
 	"github.com/nextvibe/nextvibe/internal/brand"
 	"github.com/nextvibe/nextvibe/internal/detector"
+	"github.com/nextvibe/nextvibe/internal/protocol"
 )
 
 type Recommendation struct {
@@ -18,6 +19,7 @@ type AgentInstructions struct {
 }
 
 type Suggestion struct {
+	ProtocolVersion    string            `json:"protocolVersion"`
 	CurrentStage       string            `json:"currentStage"`
 	Recommendation     Recommendation    `json:"recommendation"`
 	Artifacts          []string          `json:"artifacts"`
@@ -26,24 +28,27 @@ type Suggestion struct {
 }
 
 func Suggest(scan detector.Result) Suggestion {
+	var suggestion Suggestion
 	switch scan.Stage.ID {
 	case "project-goal-missing":
-		return projectGoalSuggestion(scan)
+		suggestion = projectGoalSuggestion(scan)
 	case "project-structure-missing":
-		return projectStructureSuggestion(scan)
+		suggestion = projectStructureSuggestion(scan)
 	case "frontend-prototype-backend-incomplete":
-		return apiContractSuggestion(scan)
+		suggestion = apiContractSuggestion(scan)
 	case "api-contract-data-model-missing":
-		return dataModelSuggestion(scan)
+		suggestion = dataModelSuggestion(scan)
 	case "backend-tests-missing":
-		return testsSuggestion(scan)
+		suggestion = testsSuggestion(scan)
 	case "deployment-config-missing":
-		return deploymentSuggestion(scan)
+		suggestion = deploymentSuggestion(scan)
 	case "agent-integration-missing":
-		return agentIntegrationSuggestion(scan)
+		suggestion = agentIntegrationSuggestion(scan)
 	default:
-		return focusedSliceSuggestion(scan)
+		suggestion = focusedSliceSuggestion(scan)
 	}
+	suggestion.ProtocolVersion = protocol.Version
+	return suggestion
 }
 
 func projectStructureSuggestion(scan detector.Result) Suggestion {
