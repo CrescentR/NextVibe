@@ -1,4 +1,6 @@
-# NextVibe
+<p align="center">
+  <img src="docs/assets/nextvibe-hero.svg" alt="NextVibe - Agent-native project navigation" width="760">
+</p>
 
 <p align="center">
   <strong>Agent-native project navigation for AI-assisted development.</strong>
@@ -11,7 +13,7 @@
   ·
   <a href="docs/release.md">Release</a>
   ·
-  <a href="docs/development-log.md">Development Log</a>
+  <a href="docs/roadmap.md">Roadmap</a>
 </p>
 
 <p align="center">
@@ -255,12 +257,13 @@ project state; it does not become the model.
 | `internal/taskgen` | Current task and task file generation |
 | `internal/checker` | Basic task completion checks |
 | `internal/installer` | Agent integration file generation |
-| `docs/` | Usage, release, roadmap, deployment, and development notes |
+| `docs/` | Usage, release, roadmap, deployment, and product notes |
 
 ## More Docs
 
 - [Usage](docs/usage.md)
 - [Release](docs/release.md)
 - [Deployment](docs/deployment.md)
-- [Development Roadmap](docs/development-roadmap.md)
-- [Development Log](docs/development-log.md)
+- [Roadmap](docs/roadmap.md)
+- [Vision](docs/vision.md)
+- [Agent-native Design](docs/agent-native-design.md)

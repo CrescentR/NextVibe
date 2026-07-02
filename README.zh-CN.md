@@ -1,4 +1,6 @@
-# NextVibe
+<p align="center">
+  <img src="docs/assets/nextvibe-hero.svg" alt="NextVibe - 面向 AI 编程工具的项目导航" width="760">
+</p>
 
 <p align="center">
   <strong>面向 AI 辅助开发的 agent-native 项目导航工具。</strong>
@@ -11,7 +13,7 @@
   ·
   <a href="docs/release.md">发布流程</a>
   ·
-  <a href="docs/development-log.md">开发日志</a>
+  <a href="docs/roadmap.md">路线图</a>
 </p>
 
 <p align="center">
@@ -242,12 +244,13 @@ MCP 以后可以作为另一种暴露本地协议的方式加入，但不应该�
 | `internal/taskgen` | 当前任务和任务文件生成 |
 | `internal/checker` | 基础任务完成检查 |
 | `internal/installer` | Agent 集成文件生成 |
-| `docs/` | 使用、发布、路线、部署和开发记录 |
+| `docs/` | 使用、发布、路线、部署和产品说明 |
 
 ## 更多文档
 
 - [使用说明](docs/usage.md)
 - [发布流程](docs/release.md)
 - [部署说明](docs/deployment.md)
-- [开发路线与流程](docs/development-roadmap.md)
-- [开发日志](docs/development-log.md)
+- [路线图](docs/roadmap.md)
+- [产品愿景](docs/vision.md)
+- [Agent-native 设计](docs/agent-native-design.md)
