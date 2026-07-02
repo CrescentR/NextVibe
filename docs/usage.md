@@ -75,7 +75,9 @@ $env:GOOS = "windows"; $env:GOARCH = "amd64"; go build -trimpath -ldflags="-s -w
 nextvibe init
 ```
 
-This creates `.nextvibe/` and only fills in missing files. Existing project state is preserved.
+This creates `.nextvibe/` and only fills in missing files. Existing project
+state is preserved. New workspaces include `.nextvibe/config.yaml` and a starter
+rule template at `.nextvibe/rules/default-task.md`.
 
 ## End-To-End Local Flow
 
@@ -97,7 +99,7 @@ This verifies the complete first-use path:
 - `scan --json` returns project signals, risks, stacks, and likely test commands.
 - `suggest --json` returns one recommended next task.
 - `task --json` creates or reads the active task.
-- `check --json` reports whether the active task's expected artifacts exist.
+- `check --json` reports whether the active task's completion evidence passes.
 
 For human-readable Chinese output:
 
@@ -161,7 +163,21 @@ After editing:
 nextvibe check --json
 ```
 
-The check command verifies basic completion signals for the active task.
+The check command verifies completion evidence for the active task. Older tasks
+still use allowed-file checks. Newer task files can add:
+
+```markdown
+## Required Commands
+
+- go test ./...
+
+## Evidence Files
+
+- docs/api/openapi.yaml
+```
+
+`check --json` runs required commands, checks evidence files or directories, and
+still verifies changed files stay inside the active task boundary.
 
 ## Test Command Detection
 

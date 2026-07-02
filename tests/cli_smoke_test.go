@@ -173,6 +173,110 @@ func TestInstallVerifyJSONFailsBeforeInstall(t *testing.T) {
 	})
 }
 
+func TestInitJSONCreatesConfigAndRuleTemplate(t *testing.T) {
+	withTempCWD(t, func(root string) {
+		var stdout bytes.Buffer
+		var stderr bytes.Buffer
+		code := cli.Run([]string{"init", "--json"}, &stdout, &stderr)
+		if code != 0 {
+			t.Fatalf("init returned %d, stderr: %s", code, stderr.String())
+		}
+
+		var result struct {
+			Created []string `json:"created"`
+		}
+		if err := json.Unmarshal(stdout.Bytes(), &result); err != nil {
+			t.Fatalf("init output is not valid JSON: %v\n%s", err, stdout.String())
+		}
+		for _, want := range []string{
+			filepath.ToSlash(filepath.Join(".nextvibe", "config.yaml")),
+			filepath.ToSlash(filepath.Join(".nextvibe", "rules", "default-task.md")),
+		} {
+			if !contains(result.Created, want) {
+				t.Fatalf("init created missing %q: %#v", want, result.Created)
+			}
+		}
+
+		assertFileContains(t, root, filepath.Join(".nextvibe", "config.yaml"), "version: "+protocol.Version)
+		assertFileContains(t, root, filepath.Join(".nextvibe", "config.yaml"), "requiredCommandsSection: Required Commands")
+		assertFileContains(t, root, filepath.Join(".nextvibe", "rules", "default-task.md"), "## Required Commands")
+		assertFileContains(t, root, filepath.Join(".nextvibe", "rules", "default-task.md"), "## Evidence Files")
+	})
+}
+
+func TestCheckJSONFailsWhenDeclaredEvidenceFileIsMissing(t *testing.T) {
+	withTempCWD(t, func(root string) {
+		writeFile(t, root, "README.md", "# Example\n")
+		writeCurrentTaskFixtureWithSections(t, root, "001", "active", "Need evidence", "", "## Evidence Files\n\n- docs/done.md\n")
+
+		var stdout bytes.Buffer
+		var stderr bytes.Buffer
+		code := cli.Run([]string{"check", "--json"}, &stdout, &stderr)
+		if code != 0 {
+			t.Fatalf("check returned %d, stderr: %s", code, stderr.String())
+		}
+
+		var result struct {
+			Status string `json:"status"`
+			Passed bool   `json:"passed"`
+			Checks []struct {
+				Name   string `json:"name"`
+				Passed bool   `json:"passed"`
+			} `json:"checks"`
+		}
+		if err := json.Unmarshal(stdout.Bytes(), &result); err != nil {
+			t.Fatalf("check output is not valid JSON: %v\n%s", err, stdout.String())
+		}
+		if result.Status != "incomplete" || result.Passed {
+			t.Fatalf("check result = %#v", result)
+		}
+		if !hasCheck(result.Checks, "evidence file docs/done.md exists", false) {
+			t.Fatalf("check did not report missing evidence file: %#v", result.Checks)
+		}
+	})
+}
+
+func TestCheckJSONPassesDeclaredEvidenceAndRequiredCommand(t *testing.T) {
+	withTempCWD(t, func(root string) {
+		writeFile(t, root, "README.md", "# Example\n")
+		writeFile(t, root, "go.mod", "module example\n\ngo 1.22\n")
+		writeFile(t, root, "main_test.go", "package example\n\nimport \"testing\"\n\nfunc TestExample(t *testing.T) {}\n")
+		writeFile(t, root, filepath.Join("docs", "done.md"), "done\n")
+		writeCurrentTaskFixtureWithSections(t, root, "001", "active", "Evidence complete",
+			"## Required Commands\n\n- go test ./...\n",
+			"## Evidence Files\n\n- docs/done.md\n",
+		)
+
+		var stdout bytes.Buffer
+		var stderr bytes.Buffer
+		code := cli.Run([]string{"check", "--json"}, &stdout, &stderr)
+		if code != 0 {
+			t.Fatalf("check returned %d, stderr: %s", code, stderr.String())
+		}
+
+		var result struct {
+			Status string `json:"status"`
+			Passed bool   `json:"passed"`
+			Checks []struct {
+				Name   string `json:"name"`
+				Passed bool   `json:"passed"`
+			} `json:"checks"`
+		}
+		if err := json.Unmarshal(stdout.Bytes(), &result); err != nil {
+			t.Fatalf("check output is not valid JSON: %v\n%s", err, stdout.String())
+		}
+		if result.Status != "complete" || !result.Passed {
+			t.Fatalf("check result = %#v", result)
+		}
+		if !hasCheck(result.Checks, "evidence file docs/done.md exists", true) {
+			t.Fatalf("check did not report evidence file success: %#v", result.Checks)
+		}
+		if !hasCheck(result.Checks, "required command go test ./...", true) {
+			t.Fatalf("check did not report required command success: %#v", result.Checks)
+		}
+	})
+}
+
 func TestTaskJSONCreatesAPIContractTaskForFrontendPrototype(t *testing.T) {
 	withTempCWD(t, func(root string) {
 		writeFile(t, root, "README.md", "# Example\n")
@@ -791,6 +895,11 @@ func writeReadyCLIProject(t *testing.T, root string) {
 
 func writeCurrentTaskFixture(t *testing.T, root, id, status, title string) string {
 	t.Helper()
+	return writeCurrentTaskFixtureWithSections(t, root, id, status, title, "", "")
+}
+
+func writeCurrentTaskFixtureWithSections(t *testing.T, root, id, status, title, requiredCommands, evidenceFiles string) string {
+	t.Helper()
 	taskFile := filepath.ToSlash(filepath.Join(".nextvibe", "tasks", id+"-existing-task.md"))
 	writeFile(t, root, taskFile, "# "+id+" - "+title+"\n\n"+
 		"Task ID: "+id+"\n"+
@@ -800,7 +909,9 @@ func writeCurrentTaskFixture(t *testing.T, root, id, status, title string) strin
 		"## Goal\n\nKeep the current workflow stable.\n\n"+
 		"## Allowed Files\n\n- README.md\n\n"+
 		"## Forbidden Changes\n\n- do not expand scope\n\n"+
-		"## Acceptance Criteria\n\n- Existing criterion\n")
+		"## Acceptance Criteria\n\n- Existing criterion\n\n"+
+		requiredCommands+
+		evidenceFiles)
 	writeFile(t, root, filepath.Join(".nextvibe", "current-task.md"), "# Current Task\n\n"+
 		"Task ID: "+id+"\n"+
 		"Status: "+status+"\n"+
@@ -867,6 +978,18 @@ func hasVerificationCheck(checks []struct {
 }, path, name string, passed bool) bool {
 	for _, check := range checks {
 		if check.Path == path && check.Name == name && check.Passed == passed {
+			return true
+		}
+	}
+	return false
+}
+
+func hasCheck(checks []struct {
+	Name   string `json:"name"`
+	Passed bool   `json:"passed"`
+}, name string, passed bool) bool {
+	for _, check := range checks {
+		if check.Name == name && check.Passed == passed {
 			return true
 		}
 	}

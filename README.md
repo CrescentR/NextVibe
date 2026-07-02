@@ -25,7 +25,7 @@
 
 NextVibe is a local CLI that tells coding agents what to build next. It scans a
 project, detects visible development signals, suggests a bounded next task, and
-checks whether the task has the expected artifacts.
+checks whether the task has the expected completion evidence.
 
 It does not replace Codex, Claude Code, or Cursor. It gives them a reliable
 local command they can call like `git`, `go test`, or `npm`.
@@ -45,7 +45,7 @@ NextVibe answers one narrow question:
 | 🧭 Project state | Scans files, folders, stacks, tests, and risks |
 | 🎯 Next task | Suggests one bounded task with acceptance criteria |
 | 🧱 Task boundary | Writes `.nextvibe/current-task.md` and task files |
-| ✅ Verification | Checks required artifacts and changed paths |
+| ✅ Verification | Checks completion evidence and changed paths |
 | 🤖 Agent fit | Installs Codex, Claude Code, and Cursor instructions |
 
 ## Quick Start
@@ -100,7 +100,7 @@ Expected result:
 - `scan --json` reports stacks, risks, signals, and likely test commands
 - `suggest --json` returns one recommended task
 - `task --json` creates or reads the active task
-- `check --json` reports whether the task artifacts exist
+- `check --json` reports whether task completion evidence passes
 
 ## Core Commands
 
@@ -110,7 +110,7 @@ Expected result:
 | `nextvibe scan` | Inspect project signals and current stage |
 | `nextvibe suggest` | Recommend the next bounded task |
 | `nextvibe task` | Create or read the active task file |
-| `nextvibe check` | Verify basic completion signals |
+| `nextvibe check` | Verify completion evidence and task boundaries |
 | `nextvibe install all` | Install Codex, Claude Code, and Cursor instructions |
 
 Agent-facing commands support `--json`. Text commands support
@@ -121,11 +121,14 @@ Agent-facing commands support `--json`. Text commands support
 ```text
 .nextvibe/
   project.md
+  config.yaml
   stage.md
   roadmap.md
   current-task.md
   decisions.md
   agent-context.md
+  rules/
+    default-task.md
   tasks/
 
 AGENTS.md
@@ -138,6 +141,25 @@ CLAUDE.md
 
 Existing files are preserved. NextVibe appends or updates managed sections
 instead of replacing user-authored instructions.
+
+## Completion Evidence
+
+Older tasks still pass or fail using their allowed-file checks. Newer tasks can
+declare stronger evidence in markdown:
+
+```markdown
+## Required Commands
+
+- go test ./...
+
+## Evidence Files
+
+- docs/api/openapi.yaml
+```
+
+`nextvibe check --json` runs required commands, checks evidence files or
+directories, and still verifies changed files stay inside the active task
+boundary.
 
 ## JSON Shape
 
@@ -227,7 +249,7 @@ In scope now:
 - Project scanning and stage detection
 - Next-task recommendation
 - Current task generation
-- Basic task checking
+- Evidence-based task checking
 - Codex, Claude Code, and Cursor integration files
 - Stable JSON output for agents
 - English and Chinese text output
@@ -255,7 +277,7 @@ project state; it does not become the model.
 | `internal/detector` | Stack, signal, stage, and test-command detection |
 | `internal/planner` | Next-task recommendation rules |
 | `internal/taskgen` | Current task and task file generation |
-| `internal/checker` | Basic task completion checks |
+| `internal/checker` | Evidence-based task completion checks |
 | `internal/installer` | Agent integration file generation |
 | `docs/` | Usage, release, roadmap, deployment, and product notes |
 

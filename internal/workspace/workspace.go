@@ -37,11 +37,13 @@ func Ensure(root string) (InitResult, error) {
 
 	templates := []fileTemplate{
 		{Path: filepath.Join(brand.WorkspaceDir, "project.md"), Content: projectTemplate()},
+		{Path: filepath.Join(brand.WorkspaceDir, "config.yaml"), Content: configTemplate()},
 		{Path: filepath.Join(brand.WorkspaceDir, "stage.md"), Content: stageTemplate()},
 		{Path: filepath.Join(brand.WorkspaceDir, "roadmap.md"), Content: roadmapTemplate()},
 		{Path: filepath.Join(brand.WorkspaceDir, "current-task.md"), Content: currentTaskTemplate()},
 		{Path: filepath.Join(brand.WorkspaceDir, "decisions.md"), Content: decisionsTemplate()},
 		{Path: filepath.Join(brand.WorkspaceDir, "agent-context.md"), Content: agentContextTemplate()},
+		{Path: filepath.Join(brand.WorkspaceDir, "rules", "default-task.md"), Content: defaultRuleTemplate()},
 	}
 
 	for _, template := range templates {
@@ -99,6 +101,22 @@ func projectTemplate() string {
 	}, "\n")
 }
 
+func configTemplate() string {
+	return strings.Join([]string{
+		"version: " + protocol.Version,
+		"",
+		"check:",
+		"  requiredCommandsSection: Required Commands",
+		"  evidenceFilesSection: Evidence Files",
+		"  commandTimeout: 2m",
+		"",
+		"rules:",
+		"  templateDir: .nextvibe/rules",
+		"  defaultTaskTemplate: default-task.md",
+		"",
+	}, "\n")
+}
+
 func stageTemplate() string {
 	return strings.Join([]string{
 		"# Stage",
@@ -118,6 +136,25 @@ func roadmapTemplate() string {
 		"2. Improve project detection rules.",
 		"3. Add richer agent integrations.",
 		"4. Expose the same protocol through MCP without adding model calls.",
+		"",
+	}, "\n")
+}
+
+func defaultRuleTemplate() string {
+	return strings.Join([]string{
+		"# Default Task Rule Template",
+		"",
+		"Use these optional sections when a task needs proof beyond allowed file existence.",
+		"",
+		"## Required Commands",
+		"",
+		"- go test ./...",
+		"",
+		"## Evidence Files",
+		"",
+		"- README.md",
+		"",
+		"Keep task-specific entries narrow and directly tied to the acceptance criteria.",
 		"",
 	}, "\n")
 }

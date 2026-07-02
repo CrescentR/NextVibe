@@ -1,10 +1,14 @@
 package checker
 
 import (
+	"context"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
+	"time"
 
 	"github.com/nextvibe/nextvibe/internal/brand"
 	"github.com/nextvibe/nextvibe/internal/protocol"
@@ -56,6 +60,14 @@ func CheckCurrent(root string) Result {
 		})
 	}
 
+	requirements := loadEvidenceRequirements(root, task.TaskFile)
+	for _, rel := range requirements.EvidenceFiles {
+		checks = append(checks, evidenceFileCheck(root, rel))
+	}
+	for _, command := range requirements.RequiredCommands {
+		checks = append(checks, requiredCommandCheck(root, command))
+	}
+
 	for _, check := range changedOutsideAllowed(root, task.AllowedFiles) {
 		checks = append(checks, check)
 	}
@@ -69,7 +81,7 @@ func CheckCurrent(root string) Result {
 	}
 
 	status := "complete"
-	nextAction := "All basic checks passed. Review the task acceptance criteria before marking it complete."
+	nextAction := "All completion evidence checks passed. Review the task acceptance criteria before marking it complete."
 	if !passed {
 		status = "incomplete"
 		nextAction = nextActionFor(checks)
@@ -83,6 +95,164 @@ func CheckCurrent(root string) Result {
 		Checks:          checks,
 		NextAction:      nextAction,
 	}
+}
+
+type evidenceRequirements struct {
+	RequiredCommands []string
+	EvidenceFiles    []string
+}
+
+func loadEvidenceRequirements(root, taskFile string) evidenceRequirements {
+	data, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(taskFile)))
+	if err != nil {
+		return evidenceRequirements{}
+	}
+	content := string(data)
+	return evidenceRequirements{
+		RequiredCommands: readListSection(content, "Required Commands"),
+		EvidenceFiles:    readListSection(content, "Evidence Files"),
+	}
+}
+
+func evidenceFileCheck(root, rel string) Check {
+	rel = filepath.ToSlash(strings.TrimSpace(rel))
+	if rel == "" {
+		return Check{Name: "evidence file path is not empty", Passed: false}
+	}
+	if strings.HasSuffix(rel, "/") {
+		return Check{
+			Name:   "evidence directory " + rel + " exists",
+			Passed: dirExists(root, rel),
+		}
+	}
+	return Check{
+		Name:   "evidence file " + rel + " exists",
+		Passed: fileExists(root, rel),
+	}
+}
+
+func requiredCommandCheck(root, command string) Check {
+	command = strings.TrimSpace(command)
+	if command == "" {
+		return Check{Name: "required command is not empty", Passed: false}
+	}
+	fields, err := splitCommand(command)
+	if err != nil {
+		return Check{
+			Name:    "required command " + command,
+			Passed:  false,
+			Details: err.Error(),
+		}
+	}
+	if len(fields) == 0 {
+		return Check{Name: "required command is not empty", Passed: false}
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel()
+
+	cmd := exec.CommandContext(ctx, fields[0], fields[1:]...)
+	cmd.Dir = root
+	output, err := cmd.CombinedOutput()
+	if ctx.Err() == context.DeadlineExceeded {
+		return Check{
+			Name:    "required command " + command,
+			Passed:  false,
+			Details: "command timed out after 2m",
+		}
+	}
+	if err != nil {
+		details := strings.TrimSpace(string(output))
+		if details == "" {
+			details = err.Error()
+		}
+		return Check{
+			Name:    "required command " + command,
+			Passed:  false,
+			Details: truncateDetails(details),
+		}
+	}
+	return Check{Name: "required command " + command, Passed: true}
+}
+
+func splitCommand(command string) ([]string, error) {
+	fields := []string{}
+	var builder strings.Builder
+	var quote rune
+	escaped := false
+	for _, r := range command {
+		if escaped {
+			builder.WriteRune(r)
+			escaped = false
+			continue
+		}
+		if r == '\\' {
+			escaped = true
+			continue
+		}
+		if quote != 0 {
+			if r == quote {
+				quote = 0
+				continue
+			}
+			builder.WriteRune(r)
+			continue
+		}
+		if r == '\'' || r == '"' {
+			quote = r
+			continue
+		}
+		if r == ' ' || r == '\t' || r == '\r' || r == '\n' {
+			if builder.Len() > 0 {
+				fields = append(fields, builder.String())
+				builder.Reset()
+			}
+			continue
+		}
+		builder.WriteRune(r)
+	}
+	if escaped {
+		builder.WriteRune('\\')
+	}
+	if quote != 0 {
+		return nil, fmt.Errorf("unterminated quote in required command")
+	}
+	if builder.Len() > 0 {
+		fields = append(fields, builder.String())
+	}
+	return fields, nil
+}
+
+func truncateDetails(details string) string {
+	details = strings.TrimSpace(details)
+	if len(details) <= 500 {
+		return details
+	}
+	return details[:500] + "..."
+}
+
+func readListSection(content, section string) []string {
+	body := readSection(content, section)
+	values := []string{}
+	for _, line := range strings.Split(body, "\n") {
+		line = strings.TrimSpace(line)
+		if !strings.HasPrefix(line, "- ") {
+			continue
+		}
+		value := strings.TrimSpace(strings.TrimPrefix(line, "- "))
+		if value != "" && value != "None" {
+			values = append(values, value)
+		}
+	}
+	return values
+}
+
+func readSection(content, section string) string {
+	re := regexp.MustCompile(`(?ms)^## ` + regexp.QuoteMeta(section) + `\s*(.*?)\n## `)
+	if matches := re.FindStringSubmatch(content + "\n## END\n"); len(matches) == 2 {
+		return strings.TrimSpace(matches[1])
+	}
+	return ""
 }
 
 func fileExists(root, rel string) bool {
