@@ -25,10 +25,25 @@ jobs:
       - name: Verify release
         run: sh scripts/verify-release.sh
 
+  prepare-release:
+    name: Prepare GitHub release
+    runs-on: ubuntu-latest
+    needs: verify
+    steps:
+      - name: Ensure release exists
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            echo "Release ${GITHUB_REF_NAME} already exists"
+          else
+            gh release create "$GITHUB_REF_NAME" --title "$GITHUB_REF_NAME" --generate-notes
+          fi
+
   build:
     name: Build (${{ matrix.goos }}/${{ matrix.goarch }})
     runs-on: ubuntu-latest
-    needs: verify
+    needs: prepare-release
     strategy:
       fail-fast: false
       matrix:
@@ -99,6 +114,11 @@ jobs:
             tar -czf "../dist/${package}.tar.gz" "${package}"
           fi
 
+      - name: Sync archive to GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "$GITHUB_REF_NAME" "dist/${{ matrix.package }}.${{ matrix.format }}" --clobber
+
       - name: Upload archive
         uses: actions/upload-artifact@v4
         with:
@@ -122,8 +142,7 @@ jobs:
           cd dist
           sha256sum * > checksums.txt
 
-      - name: Attach archives
-        uses: softprops/action-gh-release@v2
-        with:
-          files: dist/*
-          generate_release_notes: true
+      - name: Attach checksums
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "$GITHUB_REF_NAME" dist/checksums.txt --clobber
