@@ -77,6 +77,36 @@ nextvibe init
 
 This creates `.nextvibe/` and only fills in missing files. Existing project state is preserved.
 
+## End-To-End Local Flow
+
+From a project root, run the full local workflow:
+
+```bash
+nextvibe init
+nextvibe install all
+nextvibe scan --json
+nextvibe suggest --json
+nextvibe task --json
+nextvibe check --json
+```
+
+This verifies the complete first-use path:
+
+- `.nextvibe/` is created or updated.
+- Agent integration files are installed without replacing user-authored content.
+- `scan --json` returns project signals, risks, stacks, and likely test commands.
+- `suggest --json` returns one recommended next task.
+- `task --json` creates or reads the active task.
+- `check --json` reports whether the active task's expected artifacts exist.
+
+For human-readable Chinese output:
+
+```bash
+nextvibe scan --lang zh
+nextvibe suggest --lang zh
+nextvibe check --lang zh
+```
+
 ## Install Agent Integrations
 
 ```bash
@@ -93,6 +123,24 @@ nextvibe scan --json
 nextvibe suggest --json
 nextvibe task --json
 nextvibe check --json
+```
+
+## Output Language
+
+Human-readable text output supports English and Chinese:
+
+```bash
+nextvibe scan --lang en
+nextvibe scan --lang zh
+nextvibe suggest --language zh
+nextvibe check --lang zh
+```
+
+`--language` is an alias for `--lang`. JSON output keeps stable field names and
+structure, so agents can keep using commands such as:
+
+```bash
+nextvibe scan --json --lang zh
 ```
 
 ## Daily Agent Loop
@@ -114,3 +162,20 @@ nextvibe check --json
 ```
 
 The check command verifies basic completion signals for the active task.
+
+## Test Command Detection
+
+`scan` reports likely local test commands when it can infer them from common
+project files:
+
+```bash
+nextvibe scan
+nextvibe scan --json
+```
+
+Currently detected commands include:
+
+- `go test ./...` for Go modules
+- `npm test` for Node projects with a `test` script
+- `mvn test` for Maven projects
+- `gradle test` for Gradle projects

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/nextvibe/nextvibe/internal/cli"
@@ -86,6 +87,122 @@ func TestTaskJSONCreatesAPIContractTaskForFrontendPrototype(t *testing.T) {
 		}
 		if _, err := os.Stat(filepath.Join(root, filepath.FromSlash(task.TaskFile))); err != nil {
 			t.Fatalf("expected generated task file %s: %v", task.TaskFile, err)
+		}
+	})
+}
+
+func TestScanTextSupportsChineseLanguage(t *testing.T) {
+	withTempCWD(t, func(root string) {
+		writeFile(t, root, "README.md", "# Example\n")
+		writeFile(t, root, "go.mod", "module example\n\ngo 1.22\n")
+
+		var stdout bytes.Buffer
+		var stderr bytes.Buffer
+
+		code := cli.Run([]string{"scan", "--lang", "zh"}, &stdout, &stderr)
+		if code != 0 {
+			t.Fatalf("scan returned %d, stderr: %s", code, stderr.String())
+		}
+		output := stdout.String()
+		for _, want := range []string{"NextVibe 扫描", "项目：", "阶段：", "技术栈：", "测试命令：", "go test ./..."} {
+			if !strings.Contains(output, want) {
+				t.Fatalf("scan output missing %q:\n%s", want, output)
+			}
+		}
+	})
+}
+
+func TestScanJSONDetectsTestCommands(t *testing.T) {
+	withTempCWD(t, func(root string) {
+		writeFile(t, root, "README.md", "# Example\n")
+		writeFile(t, root, "go.mod", "module example\n\ngo 1.22\n")
+		writeFile(t, root, "package.json", `{"name":"example","scripts":{"test":"vitest run"}}`)
+		writeFile(t, root, "pom.xml", "<project></project>\n")
+		writeFile(t, root, "build.gradle", "plugins { id 'java' }\n")
+
+		var stdout bytes.Buffer
+		var stderr bytes.Buffer
+
+		code := cli.Run([]string{"scan", "--json"}, &stdout, &stderr)
+		if code != 0 {
+			t.Fatalf("scan returned %d, stderr: %s", code, stderr.String())
+		}
+
+		var result struct {
+			TestCommands []string `json:"testCommands"`
+		}
+		if err := json.Unmarshal(stdout.Bytes(), &result); err != nil {
+			t.Fatalf("scan output is not valid JSON: %v\n%s", err, stdout.String())
+		}
+		for _, want := range []string{"go test ./...", "npm test", "mvn test", "gradle test"} {
+			if !contains(result.TestCommands, want) {
+				t.Fatalf("test commands missing %q: %#v", want, result.TestCommands)
+			}
+		}
+	})
+}
+
+func TestLanguageAliasSupportsChineseLanguage(t *testing.T) {
+	withTempCWD(t, func(root string) {
+		writeFile(t, root, "README.md", "# Example\n")
+
+		var stdout bytes.Buffer
+		var stderr bytes.Buffer
+
+		code := cli.Run([]string{"scan", "--language", "zh"}, &stdout, &stderr)
+		if code != 0 {
+			t.Fatalf("scan returned %d, stderr: %s", code, stderr.String())
+		}
+		if !strings.Contains(stdout.String(), "项目：") {
+			t.Fatalf("scan output did not use Chinese labels:\n%s", stdout.String())
+		}
+	})
+}
+
+func TestInvalidLanguageFails(t *testing.T) {
+	withTempCWD(t, func(root string) {
+		writeFile(t, root, "README.md", "# Example\n")
+
+		var stdout bytes.Buffer
+		var stderr bytes.Buffer
+
+		code := cli.Run([]string{"scan", "--lang", "fr"}, &stdout, &stderr)
+		if code == 0 {
+			t.Fatalf("scan returned success, stdout: %s", stdout.String())
+		}
+		if !strings.Contains(stderr.String(), "unsupported language") {
+			t.Fatalf("stderr missing unsupported language error:\n%s", stderr.String())
+		}
+	})
+}
+
+func TestJSONOutputRemainsStableWithLanguageFlag(t *testing.T) {
+	withTempCWD(t, func(root string) {
+		writeFile(t, root, "README.md", "# Example\n")
+
+		var stdout bytes.Buffer
+		var stderr bytes.Buffer
+
+		code := cli.Run([]string{"scan", "--json", "--lang", "zh"}, &stdout, &stderr)
+		if code != 0 {
+			t.Fatalf("scan returned %d, stderr: %s", code, stderr.String())
+		}
+
+		var result struct {
+			ProjectName string `json:"projectName"`
+			Stage       struct {
+				ID    string `json:"id"`
+				Label string `json:"label"`
+			} `json:"stage"`
+		}
+		if err := json.Unmarshal(stdout.Bytes(), &result); err != nil {
+			t.Fatalf("scan output is not valid JSON: %v\n%s", err, stdout.String())
+		}
+		if result.ProjectName == "" {
+			t.Fatal("projectName is empty")
+		}
+		if result.Stage.ID == "" || result.Stage.Label == "" {
+			t.Fatalf("stage missing stable JSON fields: %#v", result.Stage)
 		}
 	})
 }

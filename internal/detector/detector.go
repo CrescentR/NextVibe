@@ -27,6 +27,7 @@ type Result struct {
 	DetectedStacks []string `json:"detectedStacks"`
 	KeyFiles       []string `json:"keyFiles"`
 	KeyDirectories []string `json:"keyDirectories"`
+	TestCommands   []string `json:"testCommands,omitempty"`
 	Signals        Signals  `json:"signals"`
 	Stage          Stage    `json:"stage"`
 	Risks          []string `json:"risks"`
@@ -35,6 +36,7 @@ type Result struct {
 func Detect(inventory scanner.Inventory) Result {
 	signals := detectSignals(inventory)
 	stacks := detectStacks(inventory)
+	testCommands := detectTestCommands(inventory)
 	hasReadme := inventory.Files["README.md"]
 	stage := detectStage(signals, hasReadme)
 	risks := detectRisks(signals, hasReadme)
@@ -44,6 +46,7 @@ func Detect(inventory scanner.Inventory) Result {
 		DetectedStacks: stacks,
 		KeyFiles:       inventory.KeyFiles,
 		KeyDirectories: inventory.KeyDirectories,
+		TestCommands:   testCommands,
 		Signals:        signals,
 		Stage:          stage,
 		Risks:          risks,
@@ -153,6 +156,34 @@ func hasFrontendDependency(pkg scanner.PackageInfo) bool {
 		deps[name] = true
 	}
 	return deps["react"] || deps["next"] || deps["vue"] || deps["svelte"] || deps["@sveltejs/kit"] || deps["vite"]
+}
+
+func detectTestCommands(inventory scanner.Inventory) []string {
+	commands := []string{}
+	seen := map[string]bool{}
+
+	add := func(command string) {
+		if command == "" || seen[command] {
+			return
+		}
+		seen[command] = true
+		commands = append(commands, command)
+	}
+
+	if inventory.GoModule != "" || inventory.Files["go.mod"] {
+		add("go test ./...")
+	}
+	if inventory.Package.Scripts["test"] != "" {
+		add("npm test")
+	}
+	if inventory.Files["pom.xml"] {
+		add("mvn test")
+	}
+	if inventory.Files["build.gradle"] {
+		add("gradle test")
+	}
+
+	return commands
 }
 
 func detectStage(signals Signals, hasReadme bool) Stage {

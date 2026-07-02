@@ -1,60 +1,47 @@
 # NextVibe
 
-[English](README.md)
+<p align="center">
+  <strong>面向 AI 辅助开发的 agent-native 项目导航工具。</strong>
+</p>
 
-NextVibe 是一个面向 AI 辅助开发者的 agent-native 项目导航工具。
+<p align="center">
+  <a href="README.md">English</a>
+  ·
+  <a href="docs/usage.md">使用说明</a>
+  ·
+  <a href="docs/release.md">发布流程</a>
+  ·
+  <a href="docs/development-log.md">开发日志</a>
+</p>
 
-它不替代 Codex、Claude Code 或 Cursor，而是给这些编程 agent 一个可靠的本地命令，用来理解项目状态、选择有边界的下一步任务，并检查任务是否完成。
+<p align="center">
+  <img alt="Go 1.22+" src="https://img.shields.io/badge/Go-1.22%2B-00ADD8?logo=go&logoColor=white">
+  <img alt="Platforms" src="https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-2E7D32">
+  <img alt="No model API key" src="https://img.shields.io/badge/model%20API%20key-not%20required-6A1B9A">
+  <img alt="License" src="https://img.shields.io/badge/license-MIT-blue">
+</p>
 
-不需要模型 API Key。不提供额外聊天界面。不要求复制粘贴 prompt。
+NextVibe 是一个本地 CLI，用来告诉编程 agent 下一步应该构建什么。它会扫描项目、识别可见的开发信号、推荐一个有边界的下一步任务，并检查任务是否具备预期产物。
 
-安装一次之后，让你的编程 agent 像调用 `git`、`go test`、`npm` 一样调用 `nextvibe`。
+它不替代 Codex、Claude Code 或 Cursor，而是给这些工具一个可靠的本地命令，让它们可以像调用 `git`、`go test`、`npm` 一样调用 `nextvibe`。
 
-## 为什么需要它
+## 为什么需要 NextVibe
 
-AI 编程工具可以很快完成原型、脚手架或前端页面，但项目做到一半后，常常会卡在“下一步该做什么”：
-
-- 先补 API 合约，还是先写后端边界
-- 先做数据模型，还是先补测试
-- 项目是否已经具备部署路径
-- agent 这次到底能改哪些文件
-- 如何避免一次任务扩散成无关重构
+AI 编程工具很擅长搭脚手架，但项目完成第一波生成后，经常卡在下一步：API 合约、后端边界、数据模型、测试、部署，还是 agent 指令？
 
 NextVibe 只回答一个窄问题：
 
 > 编程 agent 下一步应该构建什么？
 
-它通过本地项目扫描、规则化阶段判断、稳定 JSON 输出，以及 `.nextvibe/` 下的任务边界文件来回答这个问题。
+| 信号 | NextVibe 做什么 |
+| --- | --- |
+| 🧭 项目状态 | 扫描文件、目录、技术栈、测试和风险 |
+| 🎯 下一任务 | 推荐一个带验收标准的有边界任务 |
+| 🧱 任务边界 | 写入 `.nextvibe/current-task.md` 和任务文件 |
+| ✅ 完成检查 | 检查必要产物和变更路径 |
+| 🤖 Agent 适配 | 安装 Codex、Claude Code、Cursor 指令文件 |
 
-## 产品原则
-
-- NextVibe 不调用 OpenAI、Anthropic 或任何其他模型 API。
-- NextVibe 不要求用户配置模型 Key。
-- NextVibe 不是另一个 AI Chat 应用。
-- NextVibe 不是让人复制 prompt 的提示词生成器。
-- NextVibe 是一个 CLI 加 agent 集成层，主要输出机器可读结果。
-- Markdown 文件用于保存项目状态和兜底文档，不是主要交互方式。
-
-理想工作流是：
-
-```text
-agent 读取项目指令
-agent 调用 nextvibe 命令
-agent 解析 JSON
-agent 修改代码
-agent 调用 nextvibe check
-agent 更新项目状态
-```
-
-而不是：
-
-```text
-人手动运行 nextvibe
-人复制 prompt
-人粘贴给 agent
-```
-
-## 构建
+## 快速开始
 
 需要 Go 1.22 或更高版本。
 
@@ -62,92 +49,65 @@ agent 更新项目状态
 go build ./cmd/nextvibe
 ```
 
-在 macOS 或 Linux 上会生成：
+Windows 会生成 `nextvibe.exe`。macOS 或 Linux 会生成 `./nextvibe`。
 
-```bash
-./nextvibe
-```
-
-在 Windows 上会生成：
-
-```powershell
-.\nextvibe.exe
-```
-
-示例：
-
-```powershell
-.\nextvibe.exe scan --json
-```
-
-## 平台支持
-
-NextVibe 目标是支持 Windows、macOS 和 Linux。
-
-CI 会在三个系统上运行测试，并交叉编译这些发布目标：
-
-- `linux/amd64`
-- `linux/arm64`
-- `darwin/amd64`
-- `darwin/arm64`
-- `windows/amd64`
-- `windows/arm64`
-
-带版本号的 GitHub Release 会为 macOS 和 Linux 发布 `.tar.gz`，为 Windows 发布 `.zip`。
-
-维护者发布流程见 [docs/release.md](docs/release.md)。
-
-## 从 Release 安装
-
-从 GitHub Release 页面下载与你系统匹配的压缩包，解压后把 `nextvibe` 放到 `PATH` 中。
-
-Windows 二进制名称是：
-
-```text
-nextvibe.exe
-```
-
-macOS 和 Linux 二进制名称是：
-
-```text
-nextvibe
-```
-
-## 核心命令
+在项目根目录运行核心闭环：
 
 ```bash
 nextvibe init
-nextvibe scan
-nextvibe suggest
-nextvibe task
-nextvibe check
-nextvibe install codex
-nextvibe install claude
-nextvibe install cursor
 nextvibe install all
-```
-
-面向 agent 的核心命令支持稳定 JSON 输出：
-
-```bash
 nextvibe scan --json
 nextvibe suggest --json
 nextvibe task --json
 nextvibe check --json
 ```
 
-`init` 和 `install` 也支持 `--json`，便于自动化。
+文本输出支持英文和中文：
 
-## 第一次接入项目
+```bash
+nextvibe scan --lang en
+nextvibe scan --lang zh
+nextvibe suggest --language zh
+```
 
-在目标项目根目录运行：
+JSON 输出保持稳定字段名和结构，方便 agent 和自动化脚本解析。
+
+## 完整本地流程
+
+用下面的流程验证一个新项目是否已经可以被 agent 接管：
 
 ```bash
 nextvibe init
 nextvibe install all
+nextvibe scan --json
+nextvibe suggest --json
+nextvibe task --json
+nextvibe check --json
 ```
 
-这会创建或更新：
+预期结果：
+
+- `.nextvibe/` 存在并记录项目状态
+- `AGENTS.md`、`CLAUDE.md`、`.cursor/rules/nextvibe.mdc` 和 Claude 命令文件存在
+- `scan --json` 返回技术栈、风险、信号和可能的测试命令
+- `suggest --json` 返回一个推荐任务
+- `task --json` 创建或读取当前任务
+- `check --json` 判断任务产物是否存在
+
+## 核心命令
+
+| 命令 | 作用 |
+| --- | --- |
+| `nextvibe init` | 创建 `.nextvibe/` 工作区 |
+| `nextvibe scan` | 检查项目信号和当前阶段 |
+| `nextvibe suggest` | 推荐下一个有边界的任务 |
+| `nextvibe task` | 创建或读取当前任务文件 |
+| `nextvibe check` | 检查基础完成信号 |
+| `nextvibe install all` | 安装 Codex、Claude Code、Cursor 指令 |
+
+面向 agent 的命令支持 `--json`。文本命令支持 `--lang en|zh` 或 `--language en|zh`。
+
+## 会创建哪些文件
 
 ```text
 .nextvibe/
@@ -167,30 +127,7 @@ CLAUDE.md
 .claude/commands/nv-check.md
 ```
 
-已有文件会被保留。NextVibe 会追加或更新带标记的区域，而不是覆盖用户自己写的内容。
-
-## Agent 工作流
-
-当用户说“继续这个项目”“下一步做什么”“项目卡住了”时，编程 agent 应先运行：
-
-```bash
-nextvibe scan --json
-nextvibe suggest --json
-nextvibe task --json
-```
-
-然后严格遵守返回的任务边界：
-
-- 允许修改的文件或动作
-- 禁止事项
-- 验收标准
-- 预期产物
-
-完成修改后运行：
-
-```bash
-nextvibe check --json
-```
+已有文件会被保留。NextVibe 会追加或更新托管区域，而不是覆盖用户自己写的内容。
 
 ## JSON 输出示例
 
@@ -202,6 +139,7 @@ nextvibe check --json
   "detectedStacks": ["go", "react"],
   "keyFiles": ["README.md", "go.mod", "package.json"],
   "keyDirectories": ["components", "mock", "src"],
+  "testCommands": ["go test ./...", "npm test"],
   "signals": {
     "hasFrontend": true,
     "hasBackend": true,
@@ -220,11 +158,11 @@ nextvibe check --json
 }
 ```
 
-`nextvibe suggest --json` 返回推荐任务。`nextvibe task --json` 创建或读取当前任务。`nextvibe check --json` 检查当前任务的基础完成信号。
+`suggest`、`task` 和 `check` 也提供稳定 JSON，便于 agent 和脚本使用。
 
 ## 规则系统
 
-第一版规则是本地、确定性、可解释的。NextVibe 会读取仓库中可见的信号，例如：
+第一版规则是本地、确定性、可解释的。NextVibe 会读取仓库中的可见信号：
 
 - `package.json`、`go.mod`、`pom.xml`、`build.gradle`
 - `README.md`、`AGENTS.md`、`CLAUDE.md`
@@ -236,6 +174,13 @@ nextvibe check --json
 - `test/`、`tests/`、`__tests__` 和常见测试文件后缀
 - `Dockerfile`、`docker-compose.yml`
 
+它也会检测简单的本地测试命令：
+
+- Go modules：`go test ./...`
+- 带 `test` script 的 Node 项目：`npm test`
+- Maven 项目：`mvn test`
+- Gradle 项目：`gradle test`
+
 优先级规则从简单开始：
 
 1. 缺少项目目标或实现结构：先写项目目标。
@@ -245,30 +190,34 @@ nextvibe check --json
 5. 缺部署配置：添加最小部署路径。
 6. 缺 agent 集成文件：运行 `nextvibe install all`。
 
-## 命名与重命名
+## 平台支持
 
-项目名、CLI 命令名和工作区目录集中在：
+NextVibe 目标支持 Windows、macOS 和 Linux。
 
-```text
-internal/brand/brand.go
-```
+CI 会在三个操作系统上运行测试，并交叉编译这些发布目标：
 
-如果未来重命名项目，先更新这些常量，再重新生成文档和集成文件。
+- `linux/amd64`
+- `linux/arm64`
+- `darwin/amd64`
+- `darwin/arm64`
+- `windows/amd64`
+- `windows/arm64`
 
-## 当前范围
+带版本号的 GitHub Release 会为 macOS 和 Linux 发布 `.tar.gz`，为 Windows 发布 `.zip`。详见 [docs/release.md](docs/release.md)。
 
-第一版范围：
+## 产品边界
+
+当前范围：
 
 - 跨平台 Go CLI
-- `.nextvibe/` 项目状态目录
-- 项目扫描
-- 规则化技术栈和阶段判断
-- 下一步建议
+- `.nextvibe/` 项目状态
+- 项目扫描和阶段判断
+- 下一任务推荐
 - 当前任务生成
 - 基础任务检查
 - Codex、Claude Code、Cursor 集成文件
 - 面向 agent 的稳定 JSON 输出
-- 面向 Windows、macOS、Linux 的 CI 和 release 产物
+- 中英文文本输出
 
 暂不包含：
 
@@ -278,10 +227,24 @@ internal/brand/brand.go
 - 模型 API 集成
 - MCP Server
 - Prompt 市场
+- 包管理器分发
 
-MCP 以后可以作为另一种暴露同一本地协议的方式加入，但不应该改变核心原则：NextVibe 帮助 agent 导航本地项目状态，它本身不变成模型。
+MCP 以后可以作为另一种暴露本地协议的方式加入，但不应该改变核心原则：NextVibe 帮助 agent 导航本地项目状态，它本身不变成模型。
 
-## 相关文档
+## 项目结构
+
+| 路径 | 作用 |
+| --- | --- |
+| `cmd/nextvibe` | CLI 入口 |
+| `internal/scanner` | 文件和目录扫描 |
+| `internal/detector` | 技术栈、信号、阶段和测试命令检测 |
+| `internal/planner` | 下一任务推荐规则 |
+| `internal/taskgen` | 当前任务和任务文件生成 |
+| `internal/checker` | 基础任务完成检查 |
+| `internal/installer` | Agent 集成文件生成 |
+| `docs/` | 使用、发布、路线、部署和开发记录 |
+
+## 更多文档
 
 - [使用说明](docs/usage.md)
 - [发布流程](docs/release.md)

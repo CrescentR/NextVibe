@@ -1,9 +1,9 @@
 # Current Task
 
-Task ID: 004
+Task ID: 007
 Status: complete
-Title: Add a Chinese README document
-Task file: .nextvibe/tasks/004-add-chinese-readme-document.md
+Title: Polish README and verify the full usage flow
+Task file: .nextvibe/tasks/007-polish-readme-and-verify-full-usage-flow.md
 
 Run:
 

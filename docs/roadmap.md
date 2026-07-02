@@ -17,6 +17,8 @@ Status: current.
 
 ## Phase 2: Better Rules
 
+Status: current.
+
 - richer framework detection
 - language-specific test command detection
 - API contract discovery across more file names

@@ -104,3 +104,104 @@ git diff --check
 Next:
 
 - Keep the Chinese README in sync when public-facing commands or release flow change.
+
+### Task 005: Add output language selection
+
+Goal: let users choose English or Chinese for human-readable CLI output while
+keeping JSON stable for agents and automation.
+
+Changed:
+
+- Added `--lang` and `--language` options for text output.
+- Added Chinese labels for scan, suggest, task, check, init, and install text output.
+- Kept JSON output field names and structure unchanged.
+- Added CLI smoke tests for Chinese output, alias handling, invalid languages,
+  and JSON stability with a language flag.
+- Updated README, Chinese README, and usage docs.
+
+Verified:
+
+```text
+go test ./...
+go run ./cmd/nextvibe scan --lang zh
+go run ./cmd/nextvibe suggest --language zh
+go run ./cmd/nextvibe scan --json --lang zh
+go build -o nextvibe.exe ./cmd/nextvibe
+.\nextvibe.exe scan --lang zh
+nextvibe check --json
+git diff --check
+```
+
+Next:
+
+- Keep JSON stable if future localized fields are added.
+
+### Task 006: Detect local test commands
+
+Goal: begin the Better Rules phase by exposing likely local test commands in
+`scan` output.
+
+Changed:
+
+- Added `testCommands` to scan JSON output.
+- Detected `go test ./...`, `npm test`, `mvn test`, and `gradle test` from
+  common project files.
+- Added test command display to English and Chinese text scan output.
+- Added smoke tests for JSON command detection and Chinese text output.
+- Updated README, Chinese README, usage docs, and roadmap notes.
+
+Verified:
+
+```text
+go test ./...
+go run ./cmd/nextvibe scan --json
+go run ./cmd/nextvibe scan --lang zh
+go build -o nextvibe.exe ./cmd/nextvibe
+.\nextvibe.exe scan --json
+.\nextvibe.exe scan --lang zh
+.\nextvibe.exe check --json
+git diff --check
+```
+
+Next:
+
+- Keep the next Better Rules slice focused, likely API contract or database
+  discovery improvements.
+
+### Task 007: Polish README and verify the full usage flow
+
+Goal: make the README feel ready for open-source readers and prove the documented
+first-use workflow against the current CLI.
+
+Changed:
+
+- Reworked the English README with badges, icon-backed feature highlights,
+  command tables, project map, platform support, and a complete local flow.
+- Reworked the Chinese README with the same structure and visual treatment.
+- Added an end-to-end local flow section to `docs/usage.md`.
+- Fixed malformed emphasis in `CLAUDE.md` so agent instructions remain readable.
+- Added a NextVibe task boundary for this documentation and verification task.
+
+Verified:
+
+```text
+go build -o nextvibe.exe ./cmd/nextvibe
+nextvibe init --json
+nextvibe install all --json
+nextvibe scan --json
+nextvibe suggest --json
+nextvibe task --json
+nextvibe check --json
+nextvibe scan --lang zh
+```
+
+Evidence:
+
+- The flow was run in a clean temporary project at
+  `C:\Users\Admin\AppData\Local\Temp\nextvibe-e2e-6116c635d18549aea5a5341f22df2538`.
+- `scan --json` reported `testCommands: ["go test ./..."]`.
+- `check --json` returned `passed: true`.
+
+Next:
+
+- Keep README changes aligned with future CLI behavior and release packaging.

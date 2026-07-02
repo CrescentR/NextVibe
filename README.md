@@ -1,54 +1,52 @@
 # NextVibe
 
-[中文](README.zh-CN.md)
+<p align="center">
+  <strong>Agent-native project navigation for AI-assisted development.</strong>
+</p>
 
-NextVibe is an agent-native project navigation tool for AI-assisted developers.
+<p align="center">
+  <a href="README.zh-CN.md">中文</a>
+  ·
+  <a href="docs/usage.md">Usage</a>
+  ·
+  <a href="docs/release.md">Release</a>
+  ·
+  <a href="docs/development-log.md">Development Log</a>
+</p>
 
-It does not replace Codex, Claude Code, or Cursor. It gives them a reliable local command they can call to understand project state, choose a bounded next task, and verify whether that task is complete.
+<p align="center">
+  <img alt="Go 1.22+" src="https://img.shields.io/badge/Go-1.22%2B-00ADD8?logo=go&logoColor=white">
+  <img alt="Platforms" src="https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-2E7D32">
+  <img alt="No model API key" src="https://img.shields.io/badge/model%20API%20key-not%20required-6A1B9A">
+  <img alt="License" src="https://img.shields.io/badge/license-MIT-blue">
+</p>
 
-No model API key. No extra chat UI. No copy-paste prompt workflow.
+NextVibe is a local CLI that tells coding agents what to build next. It scans a
+project, detects visible development signals, suggests a bounded next task, and
+checks whether the task has the expected artifacts.
 
-Install it once, then let your coding agent call it like any other development tool.
+It does not replace Codex, Claude Code, or Cursor. It gives them a reliable
+local command they can call like `git`, `go test`, or `npm`.
 
-## Why It Exists
+## Why NextVibe
 
-AI coding tools can quickly create a prototype, scaffold a repo, or generate a frontend. Many projects then stall because the next step is unclear: API contract, backend boundary, database model, tests, deployment, or more UI.
+AI coding tools are good at scaffolding. Projects often slow down after the
+first burst because the next step is unclear: API contract, backend boundary,
+data model, tests, deployment, or agent instructions.
 
 NextVibe answers one narrow question:
 
 > What should the coding agent build next?
 
-It does this with local project scanning, rule-based stage detection, stable JSON output, and task boundary files under `.nextvibe/`.
+| Signal | What NextVibe does |
+| --- | --- |
+| 🧭 Project state | Scans files, folders, stacks, tests, and risks |
+| 🎯 Next task | Suggests one bounded task with acceptance criteria |
+| 🧱 Task boundary | Writes `.nextvibe/current-task.md` and task files |
+| ✅ Verification | Checks required artifacts and changed paths |
+| 🤖 Agent fit | Installs Codex, Claude Code, and Cursor instructions |
 
-## Product Principles
-
-- NextVibe does not call OpenAI, Anthropic, or any other model API.
-- NextVibe does not require users to configure model keys.
-- NextVibe is not another AI chat application.
-- NextVibe is not a prompt generator that asks humans to copy text into an agent.
-- NextVibe is a CLI plus agent integration layer with machine-readable output.
-- Markdown files are project state and fallback documentation, not the primary interaction model.
-
-The intended flow is:
-
-```text
-agent reads instructions
-agent calls nextvibe command
-agent parses JSON
-agent edits code
-agent calls nextvibe check
-agent updates project state
-```
-
-Not:
-
-```text
-human runs nextvibe
-human copies prompt
-human pastes prompt into agent
-```
-
-## Build
+## Quick Start
 
 Requires Go 1.22 or newer.
 
@@ -56,67 +54,67 @@ Requires Go 1.22 or newer.
 go build ./cmd/nextvibe
 ```
 
-On macOS or Linux this creates `./nextvibe`.
+On Windows this creates `nextvibe.exe`. On macOS or Linux this creates
+`./nextvibe`.
 
-On Windows this creates `nextvibe.exe`:
-
-```powershell
-.\nextvibe.exe scan --json
-```
-
-## Platform Support
-
-NextVibe is intended to run on Windows, macOS, and Linux.
-
-Continuous integration runs the test suite on all three operating systems and
-cross-compiles release binaries for:
-
-- `linux/amd64`
-- `linux/arm64`
-- `darwin/amd64`
-- `darwin/arm64`
-- `windows/amd64`
-- `windows/arm64`
-
-Tagged GitHub releases publish `.tar.gz` archives for macOS and Linux and `.zip`
-archives for Windows. See [docs/release.md](docs/release.md) for the maintainer
-release flow.
-
-## Core Commands
+Run the core loop from a project root:
 
 ```bash
 nextvibe init
-nextvibe scan
-nextvibe suggest
-nextvibe task
-nextvibe check
-nextvibe install codex
-nextvibe install claude
-nextvibe install cursor
 nextvibe install all
-```
-
-Agent-facing commands support stable JSON output:
-
-```bash
 nextvibe scan --json
 nextvibe suggest --json
 nextvibe task --json
 nextvibe check --json
 ```
 
-`init` and `install` also support `--json` for automation.
+Human-readable output supports English and Chinese:
 
-## First-Time Setup In A Project
+```bash
+nextvibe scan --lang en
+nextvibe scan --lang zh
+nextvibe suggest --language zh
+```
 
-From the target project root:
+JSON output keeps stable field names and structure for agents and automation.
+
+## Complete Local Flow
+
+Use this flow to prove a fresh project is ready for agent-guided work:
 
 ```bash
 nextvibe init
 nextvibe install all
+nextvibe scan --json
+nextvibe suggest --json
+nextvibe task --json
+nextvibe check --json
 ```
 
-This creates or updates:
+Expected result:
+
+- `.nextvibe/` exists and records project state
+- `AGENTS.md`, `CLAUDE.md`, `.cursor/rules/nextvibe.mdc`, and Claude command files exist
+- `scan --json` reports stacks, risks, signals, and likely test commands
+- `suggest --json` returns one recommended task
+- `task --json` creates or reads the active task
+- `check --json` reports whether the task artifacts exist
+
+## Core Commands
+
+| Command | Purpose |
+| --- | --- |
+| `nextvibe init` | Create the `.nextvibe/` workspace |
+| `nextvibe scan` | Inspect project signals and current stage |
+| `nextvibe suggest` | Recommend the next bounded task |
+| `nextvibe task` | Create or read the active task file |
+| `nextvibe check` | Verify basic completion signals |
+| `nextvibe install all` | Install Codex, Claude Code, and Cursor instructions |
+
+Agent-facing commands support `--json`. Text commands support
+`--lang en|zh` or `--language en|zh`.
+
+## What Gets Created
 
 ```text
 .nextvibe/
@@ -136,38 +134,8 @@ CLAUDE.md
 .claude/commands/nv-check.md
 ```
 
-Existing files are preserved. NextVibe appends or updates a marked section instead of replacing user-authored instructions.
-
-## Install From A Release
-
-Download the archive for your operating system from the GitHub release page,
-extract it, and put the `nextvibe` binary on your `PATH`.
-
-On Windows the binary is named `nextvibe.exe`. On macOS and Linux it is named
-`nextvibe`.
-
-## Agent Workflow
-
-When a user says "continue this project" or "what should I do next?", the coding agent should run:
-
-```bash
-nextvibe scan --json
-nextvibe suggest --json
-nextvibe task --json
-```
-
-The agent should then use the returned task boundaries:
-
-- allowed files or actions
-- forbidden changes
-- acceptance criteria
-- expected artifacts
-
-After editing, the agent should run:
-
-```bash
-nextvibe check --json
-```
+Existing files are preserved. NextVibe appends or updates managed sections
+instead of replacing user-authored instructions.
 
 ## JSON Shape
 
@@ -179,6 +147,7 @@ nextvibe check --json
   "detectedStacks": ["go", "react"],
   "keyFiles": ["README.md", "go.mod", "package.json"],
   "keyDirectories": ["components", "mock", "src"],
+  "testCommands": ["go test ./...", "npm test"],
   "signals": {
     "hasFrontend": true,
     "hasBackend": true,
@@ -197,11 +166,12 @@ nextvibe check --json
 }
 ```
 
-`nextvibe suggest --json` returns a recommended next task. `nextvibe task --json` creates or reads the active task. `nextvibe check --json` verifies basic completion signals.
+`suggest`, `task`, and `check` also expose stable JSON for agents and scripts.
 
 ## Rule System
 
-The first version is intentionally local and deterministic. It uses visible repository signals such as:
+The first rules are local and deterministic. NextVibe reads repository signals
+such as:
 
 - `package.json`, `go.mod`, `pom.xml`, `build.gradle`
 - `README.md`, `AGENTS.md`, `CLAUDE.md`
@@ -213,6 +183,13 @@ The first version is intentionally local and deterministic. It uses visible repo
 - `test/`, `tests/`, `__tests__`, and common test filename suffixes
 - `Dockerfile`, `docker-compose.yml`
 
+It also detects simple local test commands:
+
+- Go modules: `go test ./...`
+- Node projects with a `test` script: `npm test`
+- Maven projects: `mvn test`
+- Gradle projects: `gradle test`
+
 Priority rules start simple:
 
 1. Missing project goal or implementation structure: write project goals first.
@@ -222,38 +199,68 @@ Priority rules start simple:
 5. Deployment config is missing: add a minimal deployment path.
 6. Agent integration files are missing: run `nextvibe install all`.
 
-## Naming And Rebranding
+## Platform Support
 
-The project name, CLI command name, and workspace directory are centralized in:
+NextVibe targets Windows, macOS, and Linux.
 
-```text
-internal/brand/brand.go
-```
+CI runs tests on all three operating systems and cross-compiles release binaries
+for:
 
-If the project is renamed later, update those constants first, then regenerate docs and integration files.
+- `linux/amd64`
+- `linux/arm64`
+- `darwin/amd64`
+- `darwin/arm64`
+- `windows/amd64`
+- `windows/arm64`
 
-## Current Scope
+Tagged GitHub releases publish `.tar.gz` archives for macOS and Linux and `.zip`
+archives for Windows. See [docs/release.md](docs/release.md).
 
-In scope for the first version:
+## Product Boundaries
 
-- cross-platform Go CLI
-- `.nextvibe/` project state directory
-- project scanning
-- rule-based stack and stage detection
-- next-step recommendation
-- current task generation
-- basic task checking
+In scope now:
+
+- Cross-platform Go CLI
+- `.nextvibe/` project state
+- Project scanning and stage detection
+- Next-task recommendation
+- Current task generation
+- Basic task checking
 - Codex, Claude Code, and Cursor integration files
-- stable JSON output for agents
-- cross-platform CI and release archives for Windows, macOS, and Linux
+- Stable JSON output for agents
+- English and Chinese text output
 
 Out of scope for now:
 
-- web UI
-- cloud service
-- account system
-- model API integration
+- Web UI
+- Cloud service
+- Account system
+- Model API integration
 - MCP server
-- prompt marketplace
+- Prompt marketplace
+- Package-manager distribution
 
-MCP can be added later as another way to expose the same local protocol. It should not change the core principle: NextVibe helps agents navigate local project state; it does not become the model.
+MCP can be added later as another way to expose the same local protocol. It
+should not change the core principle: NextVibe helps agents navigate local
+project state; it does not become the model.
+
+## Project Map
+
+| Path | Purpose |
+| --- | --- |
+| `cmd/nextvibe` | CLI entrypoint |
+| `internal/scanner` | File and directory inventory |
+| `internal/detector` | Stack, signal, stage, and test-command detection |
+| `internal/planner` | Next-task recommendation rules |
+| `internal/taskgen` | Current task and task file generation |
+| `internal/checker` | Basic task completion checks |
+| `internal/installer` | Agent integration file generation |
+| `docs/` | Usage, release, roadmap, deployment, and development notes |
+
+## More Docs
+
+- [Usage](docs/usage.md)
+- [Release](docs/release.md)
+- [Deployment](docs/deployment.md)
+- [Development Roadmap](docs/development-roadmap.md)
+- [Development Log](docs/development-log.md)
