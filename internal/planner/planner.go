@@ -290,9 +290,9 @@ func focusedSliceSuggestion(scan detector.Result) Suggestion {
 	return Suggestion{
 		CurrentStage: scan.Stage.Label,
 		Recommendation: Recommendation{
-			ID:       "choose-next-product-slice",
-			Title:    "Choose the next focused product slice",
-			Reason:   "The project has enough structure to proceed with a scoped implementation task.",
+			ID:       "plan-next-development-slice",
+			Title:    "Research and write the next development plan",
+			Reason:   "The project has enough structure for an agent to inspect local context and define the next bounded development slice.",
 			Priority: "medium",
 		},
 		Artifacts: []string{
@@ -300,19 +300,22 @@ func focusedSliceSuggestion(scan detector.Result) Suggestion {
 			brand.WorkspaceDir + "/current-task.md",
 		},
 		AcceptanceCriteria: []string{
-			"The next slice has a clear user-visible outcome",
-			"Acceptance criteria are written before implementation",
-			"Task boundaries identify allowed and forbidden changes",
-			"The task can be verified locally",
+			"The next development slice names a concrete user-visible or agent-visible outcome",
+			"The plan explains why this slice follows from the scan, roadmap, vision, and current task state",
+			"Task boundaries identify allowed files or actions and forbidden changes",
+			"Verification commands are listed before implementation starts",
 		},
 		AgentInstructions: AgentInstructions{
 			AllowedActions: []string{
-				"read project state",
+				"read " + brand.CommandName + " scan --json output",
 				"update " + brand.WorkspaceDir + "/roadmap.md",
 				"update " + brand.WorkspaceDir + "/current-task.md",
+				"read docs/vision.md if present",
+				"read docs/roadmap.md if present",
 			},
 			ForbiddenActions: []string{
-				"do not expand into multiple product slices",
+				"do not implement the planned slice before writing the plan",
+				"do not expand into multiple development slices",
 				"do not add unrelated dependencies",
 				"do not skip acceptance criteria",
 			},

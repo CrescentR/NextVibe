@@ -39,7 +39,7 @@ func Detect(inventory scanner.Inventory) Result {
 	testCommands := detectTestCommands(inventory)
 	hasReadme := inventory.Files["README.md"]
 	stage := detectStage(signals, hasReadme)
-	risks := detectRisks(signals, hasReadme)
+	risks := detectRisks(inventory, signals, hasReadme)
 
 	return Result{
 		ProjectName:    inventory.ProjectName,
@@ -207,7 +207,7 @@ func detectStage(signals Signals, hasReadme bool) Stage {
 	}
 }
 
-func detectRisks(signals Signals, hasReadme bool) []string {
+func detectRisks(inventory scanner.Inventory, signals Signals, hasReadme bool) []string {
 	risks := []string{}
 	if !hasReadme {
 		risks = append(risks, "README or project goal missing")
@@ -215,10 +215,10 @@ func detectRisks(signals Signals, hasReadme bool) []string {
 	if signals.HasMockData {
 		risks = append(risks, "Mock data detected")
 	}
-	if !signals.HasApiContract {
+	if projectNeedsAPIContract(inventory, signals) && !signals.HasApiContract {
 		risks = append(risks, "No API contract found")
 	}
-	if !signals.HasDatabaseSchema {
+	if projectNeedsDatabaseSchema(inventory, signals) && !signals.HasDatabaseSchema {
 		risks = append(risks, "No database schema found")
 	}
 	if !signals.HasTests {
@@ -231,4 +231,23 @@ func detectRisks(signals Signals, hasReadme bool) []string {
 		risks = append(risks, "No agent integration files found")
 	}
 	return risks
+}
+
+func projectNeedsAPIContract(inventory scanner.Inventory, signals Signals) bool {
+	return signals.HasFrontend ||
+		signals.HasMockData ||
+		signals.HasApiContract ||
+		signals.HasDatabaseSchema ||
+		inventory.Directories["api"] ||
+		inventory.Directories["server"] ||
+		inventory.Directories["backend"]
+}
+
+func projectNeedsDatabaseSchema(inventory scanner.Inventory, signals Signals) bool {
+	return signals.HasFrontend ||
+		signals.HasMockData ||
+		signals.HasApiContract ||
+		inventory.Directories["api"] ||
+		inventory.Directories["server"] ||
+		inventory.Directories["backend"]
 }

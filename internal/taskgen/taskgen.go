@@ -37,7 +37,9 @@ func CurrentOrCreate(root string, suggestion planner.Suggestion) (Result, error)
 
 	currentPath := filepath.Join(root, brand.WorkspaceDir, "current-task.md")
 	if task, ok := readCurrentTask(root, currentPath); ok {
-		return Result{Task: task, Created: false}, nil
+		if !taskIsComplete(task) {
+			return Result{Task: task, Created: false}, nil
+		}
 	}
 
 	task := taskFromSuggestion(root, suggestion)
@@ -53,6 +55,10 @@ func CurrentOrCreate(root string, suggestion planner.Suggestion) (Result, error)
 func LoadCurrent(root string) (Task, bool) {
 	currentPath := filepath.Join(root, brand.WorkspaceDir, "current-task.md")
 	return readCurrentTask(root, currentPath)
+}
+
+func taskIsComplete(task Task) bool {
+	return strings.EqualFold(strings.TrimSpace(task.Status), "complete")
 }
 
 func taskFromSuggestion(root string, suggestion planner.Suggestion) Task {
@@ -91,6 +97,8 @@ func goalFor(suggestion planner.Suggestion) string {
 		return "Make the project goal explicit enough for coding agents to navigate safely."
 	case "define-project-structure":
 		return "Define the first implementation structure and next focused slice."
+	case "plan-next-development-slice":
+		return "Research the local project state and write the next bounded development plan before implementation."
 	default:
 		return "Define and complete the next focused product slice."
 	}
