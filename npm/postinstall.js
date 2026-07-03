@@ -144,6 +144,7 @@ function downloadFile(url, destination, redirectCount = 0) {
 }
 
 function extractArchive(archivePath, extractDir, format) {
+  const expandArchiveCommand = `Expand-Archive -LiteralPath ${quotePowerShell(archivePath)} -DestinationPath ${quotePowerShell(extractDir)} -Force`;
   const attempts = format === "zip"
     ? [
       {
@@ -153,9 +154,7 @@ function extractArchive(archivePath, extractDir, format) {
           "-ExecutionPolicy",
           "Bypass",
           "-Command",
-          "Expand-Archive -LiteralPath $args[0] -DestinationPath $args[1] -Force",
-          archivePath,
-          extractDir
+          expandArchiveCommand
         ]
       },
       {
@@ -163,9 +162,7 @@ function extractArchive(archivePath, extractDir, format) {
         args: [
           "-NoProfile",
           "-Command",
-          "Expand-Archive -LiteralPath $args[0] -DestinationPath $args[1] -Force",
-          archivePath,
-          extractDir
+          expandArchiveCommand
         ]
       },
       { command: "tar", args: ["-xf", archivePath, "-C", extractDir] }
@@ -191,6 +188,10 @@ function extractArchive(archivePath, extractDir, format) {
   }
 
   throw new Error(`Could not extract ${archivePath}. ${missingTool}`);
+}
+
+function quotePowerShell(value) {
+  return `'${String(value).replace(/'/g, "''")}'`;
 }
 
 function findBinary(root, fileName) {

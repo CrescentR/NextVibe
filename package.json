@@ -1,6 +1,6 @@
 {
   "name": "@crescentr/nextvibe",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Agent-native project navigation CLI for Codex, Claude Code, Cursor, and MCP clients.",
   "license": "MIT",
   "homepage": "https://github.com/CrescentR/NextVibe",
