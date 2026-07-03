@@ -50,7 +50,15 @@ NextVibe answers one narrow question:
 
 ## Quick Start
 
-Requires Go 1.22 or newer.
+Install the prebuilt CLI from npm. The package is scoped, while the CLI command
+stays `nextvibe`. npm installs require Node.js 18 or newer, but do not require
+Go.
+
+```bash
+npm install -g @crescentr/nextvibe
+```
+
+Or build locally from source with Go 1.22 or newer.
 
 ```bash
 go build ./cmd/nextvibe

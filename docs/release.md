@@ -47,6 +47,45 @@ nextvibe_windows_arm64.zip
 The workflow uses GitHub's default `GITHUB_TOKEN`. No extra repository secrets
 are required.
 
+## npm Publishing
+
+The npm package is published as:
+
+```text
+@crescentr/nextvibe
+```
+
+npm installs do not compile Go. During `postinstall`, the package downloads the
+matching prebuilt binary from the GitHub Release whose tag matches the package
+version. For example, `@crescentr/nextvibe@0.1.0` downloads from `v0.1.0`.
+
+Publish in this order:
+
+```bash
+git tag v0.1.0
+git push origin v0.1.0
+# wait for the GitHub Release assets to finish uploading
+npm publish --access public
+```
+
+Use a dry run before publishing:
+
+```bash
+npm publish --dry-run --access public
+```
+
+The release asset names are part of the npm install contract, so keep these
+names stable unless `npm/postinstall.js` is updated in the same release:
+
+```text
+nextvibe_linux_amd64.tar.gz
+nextvibe_linux_arm64.tar.gz
+nextvibe_darwin_amd64.tar.gz
+nextvibe_darwin_arm64.tar.gz
+nextvibe_windows_amd64.zip
+nextvibe_windows_arm64.zip
+```
+
 ## Manual Build Check
 
 Maintainers can verify the same build path locally with Go 1.22 or newer:

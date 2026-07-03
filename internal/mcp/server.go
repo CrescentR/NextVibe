@@ -19,7 +19,7 @@ import (
 	"github.com/nextvibe/nextvibe/internal/taskgen"
 )
 
-const protocolVersion = "2025-11-25"
+const protocolVersion = "2026-07-02"
 
 type rpcError struct {
 	Code    int    `json:"code"`

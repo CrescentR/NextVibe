@@ -8,6 +8,10 @@ run verification.
 
 The npm package entrypoint is `npm/nextvibe.js`.
 
+The npm package installs a prebuilt binary during `postinstall`. It maps the
+package version to a GitHub Release tag, so `@crescentr/nextvibe@0.1.0`
+downloads assets from `v0.1.0`.
+
 Local install test:
 
 ```bash
@@ -15,9 +19,21 @@ npm install -g .
 nextvibe --help
 ```
 
-The package currently builds the Go binary during `postinstall`, so npm users
-need Go 1.22 or newer on `PATH`. A later binary-download postinstall can replace
-this without changing the CLI contract.
+For local package tests before a GitHub Release exists, build a binary and point
+the installer at it:
+
+```bash
+go build -o dist/nextvibe ./cmd/nextvibe
+NEXTVIBE_INSTALL_BINARY="$PWD/dist/nextvibe" npm install -g .
+```
+
+Publish order matters:
+
+1. Push the version tag and let GitHub Actions upload all release archives.
+2. Run `npm publish --access public`.
+
+Do not publish npm before the matching GitHub Release assets exist, because npm
+users download those assets during install.
 
 ## Homebrew
 

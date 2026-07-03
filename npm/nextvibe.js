@@ -12,7 +12,7 @@ const candidates = [
 
 const binary = candidates.find((candidate) => fs.existsSync(candidate));
 if (!binary) {
-  console.error("nextvibe binary was not found. Try reinstalling the package or run `go build -o nextvibe ./cmd/nextvibe`.");
+  console.error("nextvibe binary was not found. Reinstall @crescentr/nextvibe and check the npm postinstall output.");
   process.exit(1);
 }
 
