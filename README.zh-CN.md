@@ -45,7 +45,14 @@ NextVibe 只回答一个窄问题：
 
 ## 快速开始
 
-需要 Go 1.22 或更高版本。
+通过 npm 安装预编译 CLI。包名使用 scope，CLI 命令仍然是 `nextvibe`。
+npm 安装需要 Node.js 18 或更高版本，但不需要 Go。
+
+```bash
+npm install -g @crescentr/nextvibe
+```
+
+也可以用 Go 1.22 或更高版本从源码本地构建。
 
 ```bash
 go build ./cmd/nextvibe
